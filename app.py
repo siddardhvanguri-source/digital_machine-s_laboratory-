@@ -1,5 +1,3 @@
-import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import json
@@ -12,37 +10,34 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
 
-# Set page config
-st.set_page_config(
-    page_title="Electrical Machines Digital Twin",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+from flask import Flask, request, jsonify, render_template_string
+from flask_cors import CORS
+import requests
+from github import Github
 
-# Hide Streamlit header/footer for commercial look
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            .block-container {
-                padding-top: 0rem;
-                padding-bottom: 0rem;
-                padding-left: 0rem;
-                padding-right: 0rem;
-            }
-            iframe {
-                border: none;
-                width: 100%;
-                height: 100vh;
-            }
-            body {
-                background-color: #081120;
-                overflow: hidden;
-            }
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+try:
+    from pymongo import MongoClient
+    mongo_client = MongoClient("mongodb://localhost:27017/")
+    db = mongo_client["electrical_machines_db"]
+    observations_collection = db["observations"]
+    users_collection = db["users"]
+    improvements_collection = db["improvements"]
+    
+    # Initialize default admin if not exists
+    if users_collection.count_documents({"username": "admin"}) == 0:
+        users_collection.insert_one({"username": "admin", "password": "password", "role": "admin"})
+    # Initialize default student if not exists
+    if users_collection.count_documents({"username": "student"}) == 0:
+        users_collection.insert_one({"username": "student", "password": "password", "role": "student"})
+        
+except ImportError:
+    MongoClient = None
+    observations_collection = None
+    users_collection = None
+    improvements_collection = None
+
+app = Flask(__name__)
+CORS(app)
 
 # Helper function to serialize Random Forest Regressor
 def serialize_tree(tree):
@@ -445,18 +440,164 @@ config_data = {
     }
 }
 
-html_file_path = os.path.join(os.path.dirname(__file__), "index.html")
+@app.route("/")
+def serve_frontend():
+    html_file_path = os.path.join(os.path.dirname(__file__), "index.html")
+    if os.path.exists(html_file_path):
+        with open(html_file_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+            
+        json_str = json.dumps(config_data)
+        injected_html = html_content.replace(
+            "const SERVER_DATA = null;",
+            f"const SERVER_DATA = {json_str};"
+        )
+        return render_template_string(injected_html)
+    return "Error: index.html not found.", 404
 
-if os.path.exists(html_file_path):
-    with open(html_file_path, "r", encoding="utf-8") as f:
-        html_content = f.read()
-        
-    json_str = json.dumps(config_data)
-    injected_html = html_content.replace(
-        "const SERVER_DATA = null;",
-        f"const SERVER_DATA = {json_str};"
-    )
+@app.route("/api/record_observation", methods=["POST"])
+def record_observation():
+    if observations_collection is None:
+        return jsonify({"error": "MongoDB not installed or configured."}), 500
     
-    components.html(injected_html, height=1050, scrolling=True)
-else:
-    st.error("Error: 'index.html' not found in workspace directory.")
+    data = request.json
+    try:
+        observations_collection.insert_one(data)
+        return jsonify({"status": "success", "message": "Observation saved successfully!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/get_observations", methods=["GET"])
+def get_observations():
+    if observations_collection is None:
+        return jsonify({"error": "MongoDB not installed or configured."}), 500
+        
+    facility = request.args.get("facility", None)
+    query = {}
+    if facility:
+        query["facility"] = facility
+        
+    results = []
+    for obs in observations_collection.find(query, {"_id": 0}):
+        results.append(obs)
+    return jsonify(results), 200
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    if users_collection is None:
+        return jsonify({"error": "Database not configured"}), 500
+    
+    data = request.json
+    username = data.get("username")
+    password = data.get("password")
+    
+    user = users_collection.find_one({"username": username, "password": password})
+    if user:
+        return jsonify({"status": "success", "role": user["role"], "username": user["username"]}), 200
+    else:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+@app.route("/api/ai/improve", methods=["POST"])
+def ai_improve():
+    data = request.json
+    prompt = data.get("prompt")
+    username = data.get("username", "admin")
+    
+    # 1. Call LLM (Placeholder for Nemotron/OpenAI)
+    # We simulate an LLM returning some frontend code changes for demonstration.
+    # In a real scenario, you'd pass the file content to the LLM and get a diff/new content.
+    llm_generated_code = f"// Improvement generated by AI for prompt: {prompt}\n// Note: This is a simulated LLM response.\n"
+    
+    # 2. Record improvement intent to database
+    if improvements_collection is not None:
+        improvements_collection.insert_one({
+            "prompt": prompt,
+            "username": username,
+            "status": "pending",
+            "branch_name": f"improvement-{os.urandom(4).hex()}"
+        })
+        
+    # 3. Use GitHub API to create a branch and commit the code
+    github_token = os.environ.get("GITHUB_PAT")
+    repo_name = "siddardhvanguri-source/digital_machine-s_laboratory-"
+    
+    if github_token:
+        try:
+            g = Github(github_token)
+            repo = g.get_repo(repo_name)
+            
+            # Get main branch ref
+            main_ref = repo.get_git_ref("heads/main")
+            
+            # Create new branch
+            branch_name = f"improvement-{os.urandom(4).hex()}"
+            repo.create_git_ref(ref=f"refs/heads/{branch_name}", sha=main_ref.object.sha)
+            
+            # Try to get index.html to update it
+            try:
+                file_contents = repo.get_contents("index.html", ref=branch_name)
+                # For safety in this demo, we just append a comment at the top rather than destroying the file
+                new_content = llm_generated_code + file_contents.decoded_content.decode("utf-8")
+                repo.update_file(
+                    file_contents.path,
+                    f"AI Improvement: {prompt}",
+                    new_content,
+                    file_contents.sha,
+                    branch=branch_name
+                )
+            except Exception as e:
+                print("Could not update file on GitHub:", e)
+                
+            return jsonify({"status": "success", "branch": branch_name, "message": "Improvement branch created!"}), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e), "message": "GitHub API failed."}), 500
+    else:
+        return jsonify({"status": "mock_success", "message": "Simulated! No GITHUB_PAT env var found to actually push."}), 200
+
+@app.route("/api/git/branches", methods=["GET"])
+def get_git_branches():
+    if improvements_collection is not None:
+        branches = []
+        for imp in improvements_collection.find({}, {"_id": 0}):
+            branches.append(imp)
+        return jsonify(branches), 200
+    return jsonify([]), 200
+
+@app.route("/api/git/publish", methods=["POST"])
+def publish_branch():
+    data = request.json
+    branch_name = data.get("branch_name")
+    
+    github_token = os.environ.get("GITHUB_PAT")
+    repo_name = "siddardhvanguri-source/digital_machine-s_laboratory-"
+    
+    if github_token and branch_name:
+        try:
+            g = Github(github_token)
+            repo = g.get_repo(repo_name)
+            
+            # Create a Pull Request and Merge it
+            pr = repo.create_pull(
+                title=f"Publish AI Improvement: {branch_name}",
+                body="Merging AI-generated improvements into main.",
+                head=branch_name,
+                base="main"
+            )
+            pr.merge()
+            
+            # Update DB status
+            if improvements_collection is not None:
+                improvements_collection.update_one({"branch_name": branch_name}, {"$set": {"status": "published"}})
+                
+            return jsonify({"status": "success", "message": "Merged and published!"}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+            
+    # Mock fallback
+    if improvements_collection is not None:
+        improvements_collection.update_one({"branch_name": branch_name}, {"$set": {"status": "published"}})
+    return jsonify({"status": "mock_success", "message": "Simulated publish! Set GITHUB_PAT to actually merge."}), 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
