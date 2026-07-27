@@ -1,5 +1,11 @@
-streamlit>=1.35.0
+flask>=3.0.0
+flask-cors>=4.0.0
+pymongo>=4.6.0
+PyGithub>=2.1.1
+requests>=2.31.0
 pandas>=2.0.0
 numpy>=1.24.0
 scikit-learn>=1.2.0
 scipy>=1.10.0
+openai
+pymongo
