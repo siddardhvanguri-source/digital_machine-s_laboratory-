@@ -17,7 +17,7 @@ from github import Github
 
 try:
     from pymongo import MongoClient
-    mongo_client = MongoClient("mongodb://localhost:27017/")
+    mongo_client = MongoClient(os.environ.get("MONGODB_URI", "mongodb://localhost:27017/"))
     db = mongo_client["electrical_machines_db"]
     observations_collection = db["observations"]
     users_collection = db["users"]
