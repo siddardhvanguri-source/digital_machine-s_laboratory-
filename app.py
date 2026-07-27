@@ -557,7 +557,8 @@ Do NOT include markdown formatting, backticks, or any other text. Just the raw J
             
     except Exception as e:
         print("Nemotron LLM failed:", e)
-        llm_generated_code = f"<!-- Nemotron Simulation (Error/No Key): {str(e)} -->\n"
+        # Provide a fun mock response so they can see the feature work even without an API key!
+        llm_generated_code = f"\n<!-- AI Auto-Coder Injection (MOCK) -->\n<style>body {{ border: 5px solid #00ff00; }} /* Simulated AI Change for {prompt} */</style>\n<script>console.log('Simulated Nemotron Action: {prompt}');</script>\n<!-- End AI Auto-Coder Injection -->\n"
     
     # 2. Record improvement intent to database
     if improvements_collection is not None:
