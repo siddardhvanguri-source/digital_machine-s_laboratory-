@@ -1,0 +1,2896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Electrical Machines Digital Twin Laboratory</title>
+  <meta name="description" content="State-of-the-art interactive digital twin and virtual 3D engineering simulation suite for Induction Motors and Alternators.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Core CDNs -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- Three.js (3D Graphics) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <!-- Plotly (Engineering Graphs) -->
+  <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+  
+  <!-- KaTeX (Mathematical Formulae) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel (In-browser JSX compilation) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- GSAP for Smooth Transitions -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #030712;
+      --indigo-primary: #4f46e5;
+      --gold-accent: #eab308;
+      --gold-glow: rgba(234, 179, 8, 0.4);
+      --blue-glow: rgba(79, 70, 229, 0.45);
+      --glass-bg: rgba(10, 20, 42, 0.85);
+      --glass-border: rgba(255, 255, 255, 0.08);
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: #f1f5f9;
+      font-family: 'Outfit', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    .space-font {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--indigo-primary);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--gold-accent);
+    }
+
+    /* Glassmorphism Classes */
+    .glass-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(16px);
+      border-radius: 16px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-card:hover {
+      border-color: rgba(234, 179, 8, 0.25);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 20px var(--blue-glow);
+    }
+
+    .glass-header {
+      background: rgba(6, 12, 26, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    /* Stamped Industrial Nameplate styling */
+    .stamped-nameplate {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 2px solid #64748b;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.5);
+      position: relative;
+    }
+    .stamped-nameplate::before, .stamped-nameplate::after {
+      content: '';
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: #475569;
+      border-radius: 50%;
+      box-shadow: 1px 1px 2px rgba(0,0,0,0.6);
+    }
+    .stamped-nameplate::before { top: 6px; left: 6px; }
+    .stamped-nameplate::after { top: 6px; right: 6px; }
+
+    /* Glow Effects */
+    .glow-gold {
+      box-shadow: 0 0 15px var(--gold-glow);
+    }
+    .glow-blue {
+      box-shadow: 0 0 15px var(--blue-glow);
+    }
+    .text-glow-gold {
+      text-shadow: 0 0 8px var(--gold-accent);
+    }
+    .text-glow-blue {
+      text-shadow: 0 0 8px #6366f1;
+    }
+
+    /* Floating Hologram directory */
+    .hologram-directory {
+      position: absolute;
+      top: 90px;
+      left: 24px;
+      z-index: 1000;
+      pointer-events: auto;
+      background: rgba(10, 20, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(234, 179, 8, 0.4);
+      box-shadow: 0 0 25px rgba(79, 70, 229, 0.35);
+      border-radius: 16px;
+      animation: float-slow 6s ease-in-out infinite;
+    }
+
+    @keyframes float-slow {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(0.5deg); }
+    }
+
+    /* Scanlines Overlay */
+    .grid-scanlines {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.15) 50%
+      );
+      background-size: 100% 4px;
+      z-index: 2;
+    }
+
+    /* Animated current flow */
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -20;
+      }
+    }
+    .wire-flow {
+      stroke-dasharray: 6 4;
+      animation: dash 1s linear infinite;
+    }
+  </style>
+</head>
+<body class="w-full h-screen relative">
+  <div class="grid-scanlines"></div>
+  
+  <!-- Black full page transition screen overlay -->
+  <div id="transition-overlay" class="fixed inset-0 bg-slate-950 opacity-0 pointer-events-none z-50 transition-all duration-700"></div>
+
+  <!-- React App Root Container -->
+  <div id="root" class="w-full h-full"></div>
+
+  <script>
+    const SERVER_DATA = null;
+  </script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    // Component: SliderControl Helper
+    function SliderControl({ label, min, max, step, value, setValue, suffix }) {
+      return (
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center text-[10px] text-slate-400">
+            <span className="font-semibold uppercase tracking-wider">{label}</span>
+            <span className="font-mono text-yellow-500 font-bold bg-slate-950/60 px-1.5 py-0.5 rounded border border-slate-800">
+              {value.toFixed(step < 0.01 ? 4 : (step < 0.1 ? 2 : 1))}
+              {suffix}
+            </span>
+          </div>
+          <input 
+            type="range" 
+            min={min} 
+            max={max} 
+            step={step} 
+            value={value} 
+            onChange={(e) => setValue(parseFloat(e.target.value))} 
+            className="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-yellow-500" 
+          />
+        </div>
+      );
+    }
+
+    const DEFAULT_DATA = {
+      "dataset_415v": {
+        "experimental": {
+          "V_line": [415, 430, 430, 435, 430, 430],
+          "I_line": [3.2, 3.4, 3.7, 3.9, 4.3, 4.6],
+          "P_in": [300, 480, 1280, 1640, 2120, 2480],
+          "S1": [0, 0, 0.2, 0.6, 1.4, 2.5],
+          "S2": [0, 1.0, 5.0, 6.6, 9.4, 12.3],
+          "Speed": [1497, 1495, 1484, 1478, 1476, 1465],
+          "T_shaft": [0, 1.24, 5.94, 7.42, 9.90, 12.12],
+          "P_out": [0, 194.13, 923.10, 1148.44, 1530.20, 1854.40],
+          "eff": [0, 40.45, 72.12, 70.02, 72.18, 74.77],
+          "pf": [0.130, 0.190, 0.464, 0.558, 0.661, 0.723],
+          "slip": [0.20, 0.33, 1.07, 1.47, 1.60, 2.33],
+          "R_drum": 0.12605
+        },
+        "fitted_params": {
+          "R1": 1.482,
+          "R2_prime": 1.764,
+          "X1": 3.412,
+          "X2_prime": 3.412,
+          "Xm": 78.45,
+          "Rc": 542.1,
+          "P_rot": 124.5
+        }
+      },
+      "dataset_220v": {
+        "experimental": {
+          "V_line": [220, 220, 220, 220, 220, 220, 220, 220, 220],
+          "I_line": [4.0, 4.3, 4.6, 4.9, 5.2, 5.5, 5.8, 6.1, 6.4],
+          "P_in": [160, 280, 440, 600, 640, 680, 700, 920, 1000],
+          "S1": [0, 1.7, 2.5, 2.8, 3.7, 3.93, 4.3, 4.6, 4.8],
+          "S2": [0, 0.2, 0.3, 0.33, 0.4, 0.4, 0.33, 0.3, 0.3],
+          "Speed": [1500, 1491, 1485, 1480, 1477, 1472, 1467, 1464, 1461],
+          "T_shaft": [0, 1.428, 2.090, 2.350, 3.140, 3.360, 3.781, 4.095, 4.286],
+          "P_out": [0, 222.60, 325.01, 364.20, 486.10, 518.20, 580.80, 627.80, 655.70],
+          "eff": [0, 79.50, 73.87, 60.70, 75.95, 76.21, 82.97, 68.24, 65.57],
+          "pf": [0.105, 0.171, 0.251, 0.321, 0.323, 0.325, 0.317, 0.396, 0.410],
+          "slip": [0, 0.60, 1.00, 1.33, 1.53, 1.87, 2.20, 2.40, 2.60],
+          "R_drum": 0.097
+        },
+        "fitted_params": {
+          "R1": 1.450,
+          "R2_prime": 1.700,
+          "X1": 3.300,
+          "X2_prime": 3.300,
+          "Xm": 72.00,
+          "Rc": 490.0,
+          "P_rot": 85.0
+        }
+      },
+      "alternator": {
+        "experimental": {
+          "V_line": [415.0, 410.0, 400.0, 390.0, 375.0, 360.0, 350.0, 340.0, 325.0, 310.0, 290.0, 270.0],
+          "I_line": [0.0, 1.0, 2.0, 2.8, 3.4, 4.2, 4.3, 4.8, 5.3, 5.8, 6.34, 6.8],
+          "I_f": [1.1, 1.1, 1.06, 1.05, 1.05, 1.05, 1.05, 1.04, 1.04, 1.041, 1.04, 1.04],
+          "P_out": [0.0, 710.14, 1385.64, 1891.39, 2208.36, 2618.86, 2606.73, 2826.70, 2983.45, 3114.22, 3184.45, 3180.04]
+        },
+        "fitted_params": {
+          "Ra": 2.5067,
+          "Xs": 24.6483,
+          "Eph": 240.38,
+          "r2": 0.997467
+        }
+      }
+    };
+
+    const activeData = SERVER_DATA ? SERVER_DATA : DEFAULT_DATA;
+
+    // Component: Math Equation Renderer
+    function MathEquation({ tex, inline = false }) {
+      const containerRef = useRef(null);
+      useEffect(() => {
+        if (containerRef.current) {
+          if (typeof window.katex !== "undefined") {
+            window.katex.render(tex, containerRef.current, {
+              displayMode: !inline,
+              throwOnError: false
+            });
+          } else {
+            containerRef.current.textContent = tex;
+          }
+        }
+      }, [tex, inline]);
+      return <span ref={containerRef} className="font-mono text-sky-400" />;
+    }
+
+    // Custom ML Predictor Evaluators
+    function evalMLP(network, scaledX) {
+      const W1 = network.W1;
+      const b1 = network.b1;
+      const W2 = network.W2;
+      const b2 = network.b2;
+      
+      const H = b1.length;
+      const hidden = [];
+      for (let h = 0; h < H; h++) {
+        let z = b1[h];
+        for (let i = 0; i < 3; i++) {
+          z += scaledX[i] * W1[i][h];
+        }
+        hidden.push(Math.max(0, z)); // ReLU
+      }
+      
+      let out = b2[0];
+      for (let h = 0; h < H; h++) {
+        out += hidden[h] * W2[h][0];
+      }
+      return out;
+    }
+
+    function evalTree(node, x) {
+      if (node.type === "leaf") {
+        return node.value;
+      }
+      const val = x[node.feature_idx];
+      if (val <= node.threshold) {
+        return evalTree(node.left, x);
+      } else {
+        return evalTree(node.right, x);
+      }
+    }
+
+    function evalForest(forest, x) {
+      const preds = forest.map(tree => evalTree(tree, x));
+      return preds.reduce((a, b) => a + b, 0) / preds.length;
+    }
+
+    function evalPoly(coefs, x) {
+      const [x0, x1, x2] = x;
+      const polyFeatures = [
+        1, 
+        x0, x1, x2, 
+        x0*x0, x0*x1, x0*x2, 
+        x1*x1, x1*x2, 
+        x2*x2
+      ];
+      return coefs.reduce((sum, coef, idx) => sum + coef * polyFeatures[idx], 0);
+    }
+
+    // Main App Container
+    function App() {
+      const [view, setView] = useState("hero"); // hero or dashboard
+      const [activeFacility, setActiveFacility] = useState("motor"); 
+      const [selectedDataset, setSelectedDataset] = useState("dataset_415v");
+      const [playbackIndex, setPlaybackIndex] = useState(0);
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [activeTab, setActiveTab] = useState("eee-equations");
+      
+      // Dynamic Simulation Sliders for Induction Motor
+      const [slip, setSlip] = useState(0.015);
+      const [voltage, setVoltage] = useState(415.0);
+      const [frequency, setFrequency] = useState(50.0);
+      const [r1, setR1] = useState(1.48);
+      const [r2Prime, setR2Prime] = useState(1.76);
+      const [x1, setX1] = useState(3.41);
+      const [x2Prime, setX2Prime] = useState(3.41);
+      const [xm, setXm] = useState(78.45);
+      const [rc, setRc] = useState(542.1);
+      const [pRot, setPRot] = useState(124.5);
+      const [loadTorque, setLoadTorque] = useState(5.0); 
+
+      // Dynamic Simulation Sliders for Alternator
+      const [aIf, setAIf] = useState(1.05); 
+      const [aIa, setAIa] = useState(4.8);   
+      const [aPF, setAPF] = useState(0.85);  
+      const [aSpeed, setASpeed] = useState(1500.0); 
+      const [aRa, setARa] = useState(2.5067); 
+      const [aXs, setAXs] = useState(24.6483); 
+
+      // 3D Display Settings Overlay State
+      const [showFlux, setShowFlux] = useState(true);
+      const [showRotation, setShowRotation] = useState(true);
+      const [showCutaway, setShowCutaway] = useState(false);
+      const [showThermal, setShowThermal] = useState(false);
+      const [hoveredPart, setHoveredPart] = useState("No Component Selected");
+
+      // Interactive measurements
+      const [motorObservationTable, setMotorObservationTable] = useState([
+        { id: 1, v: 415.0, i: 3.2, p: 300, s1: 0.0, s2: 0.0, speed: 1497 },
+        { id: 2, v: 430.0, i: 3.4, p: 480, s1: 0.0, s2: 1.0, speed: 1495 },
+        { id: 3, v: 430.0, i: 3.7, p: 1280, s1: 0.2, s2: 5.0, speed: 1484 },
+        { id: 4, v: 435.0, i: 3.9, p: 1640, s1: 0.6, s2: 6.6, speed: 1478 },
+      ]);
+
+      const [altObservationTable, setAltObservationTable] = useState([
+        { id: 1, iff: 1.1, ia: 0.0, vt_l: 415, p_out: 0, vr: 0.0 },
+        { id: 2, iff: 1.1, ia: 1.0, vt_l: 410, p_out: 710, vr: 1.2 },
+        { id: 3, iff: 1.06, ia: 2.0, vt_l: 400, p_out: 1385, vr: 3.75 },
+        { id: 4, iff: 1.05, ia: 2.8, vt_l: 390, p_out: 1891, vr: 6.4 },
+      ]);
+
+      const [selectedMLModel, setSelectedMLModel] = useState("mlp"); // mlp, rf, poly
+
+      // Synchronize slider state when dataset/activeFacility changes
+      useEffect(() => {
+        if (activeFacility === "motor") {
+          const params = activeData[selectedDataset].fitted_params;
+          setR1(params.R1);
+          setR2Prime(params.R2_prime);
+          setX1(params.X1);
+          setX2Prime(params.X2_prime);
+          setXm(params.Xm);
+          setRc(params.Rc);
+          setPRot(params.P_rot);
+          const exp = activeData[selectedDataset].experimental;
+          setVoltage(exp.V_line[0]);
+        } else {
+          const params = activeData.alternator.fitted_params;
+          setARa(params.Ra);
+          setAXs(params.Xs);
+        }
+      }, [selectedDataset, activeFacility]);
+
+      // Calculate physics metrics for the Induction Motor
+      const motorPhysicsResults = useMemo(() => {
+        const V_ph = voltage / Math.sqrt(3);
+        const Ns = (120 * frequency) / 4; 
+        const speed = (1 - slip) * Ns;
+        const omega_s = (2 * Math.PI * Ns) / 60;
+        const omega_m = (2 * Math.PI * speed) / 60;
+
+        const zm_denom = rc * rc + xm * xm;
+        const zm_re = (rc * xm * xm) / zm_denom;
+        const zm_im = (rc * rc * xm) / zm_denom;
+
+        let Z2_re = 0;
+        let Z2_im = x2Prime;
+        if (slip > 0) Z2_re = r2Prime / slip;
+
+        const num_re = zm_re * Z2_re - zm_im * Z2_im;
+        const num_im = zm_re * Z2_im + zm_im * Z2_re;
+        const den_re = zm_re + Z2_re;
+        const den_im = zm_im + Z2_im;
+        const den_mag2 = den_re * den_re + den_im * den_im;
+        
+        const zp_re = den_mag2 > 0 ? (num_re * den_re + num_im * den_im) / den_mag2 : 0;
+        const zp_im = den_mag2 > 0 ? (num_im * den_re - num_re * den_im) / den_mag2 : 0;
+
+        const zin_re = r1 + zp_re;
+        const zin_im = x1 + zp_im;
+        const zin_mag2 = zin_re * zin_re + zin_im * zin_im;
+        const zin_mag = Math.sqrt(zin_mag2);
+
+        const i1_mag = zin_mag > 0 ? V_ph / zin_mag : 0;
+        const pf = zin_mag > 0 ? zin_re / zin_mag : 1.0;
+        const theta = Math.acos(pf);
+
+        const p_in = Math.sqrt(3) * voltage * i1_mag * pf; 
+
+        const i1_re = i1_mag * pf;
+        const i1_im = -i1_mag * Math.sin(theta);
+        const e1_re = V_ph - (i1_re * r1 - i1_im * x1);
+        const e1_im = -(i1_re * x1 + i1_im * r1);
+        const e1_mag = Math.sqrt(e1_re * e1_re + e1_im * e1_im);
+
+        const z2_mag2 = Z2_re * Z2_re + Z2_im * Z2_im;
+        const i2_prime_mag = z2_mag2 > 0 ? e1_mag / Math.sqrt(z2_mag2) : 0;
+
+        const stator_cu_loss = 3 * i1_mag * i1_mag * r1;
+        const iron_loss = rc > 0 ? (3 * e1_mag * e1_mag) / rc : 0;
+        const rotor_cu_loss = 3 * i2_prime_mag * i2_prime_mag * r2Prime;
+        
+        const p_ag = slip > 0 ? 3 * i2_prime_mag * i2_prime_mag * (r2Prime / slip) : 0;
+        const p_conv = (1 - slip) * p_ag;
+        
+        let p_out = p_conv - pRot;
+        if (p_out < 0) p_out = 0;
+
+        const t_dev = p_ag / omega_s;
+        const t_shaft = speed > 0 ? (p_out / omega_m) : 0;
+        const eff = p_in > 0 ? (p_out / p_in) * 100 : 0;
+
+        // Visual spring scale values
+        const s_drum = activeData[selectedDataset].experimental.R_drum || 0.126;
+        const s_diff = t_shaft / (9.81 * s_drum); // (S2 - S1) in kg
+        const S1 = Math.max(0.0, loadTorque * 0.15);
+        const S2 = S1 + s_diff;
+
+        const winding_temp = 35 + (stator_cu_loss + iron_loss) * 0.05 + loadTorque * 2.8;
+
+        return {
+          V_ph, Ns, speed, i1_mag, pf, p_in, e1_mag, i2_prime_mag,
+          stator_cu_loss, iron_loss, rotor_cu_loss, p_ag, p_conv, p_out,
+          t_dev, t_shaft, eff, S1, S2, winding_temp
+        };
+      }, [voltage, slip, frequency, r1, r2Prime, x1, x2Prime, xm, rc, pRot, loadTorque, selectedDataset]);
+
+      // Calculate physics metrics for the Alternator
+      const alternatorPhysicsResults = useMemo(() => {
+        const Eph = 240 * (aSpeed / 1500.0) * (aIf / 1.05);
+        const phi_rad = Math.acos(Math.abs(aPF)) * (aPF < 0 ? -1 : 1); 
+        
+        const B = 2 * aIa * (aRa * Math.cos(phi_rad) + aXs * Math.sin(phi_rad));
+        const C = (aIa**2) * (aRa**2 + aXs**2) - Eph**2;
+        const disc = B**2 - 4*C;
+        
+        const vt_ph = disc >= 0 ? Math.max(20.0, (-B + Math.sqrt(disc)) / 2) : 20.0;
+        const vt_line = vt_ph * Math.sqrt(3);
+        const vr = ((Eph - vt_ph) / vt_ph) * 100.0;
+        
+        const p_out = 3.0 * vt_ph * aIa * Math.cos(phi_rad);
+        const q_out = 3.0 * vt_ph * aIa * Math.sin(phi_rad);
+        const losses = 3 * aIa * aIa * aRa + 250.0;
+        const eff = p_out > 0 ? (p_out / (p_out + losses)) * 100.0 : 0.0;
+        
+        return {
+          Eph, vt_ph, vt_line, vr, p_out, q_out, losses, eff
+        };
+      }, [aIf, aIa, aPF, aSpeed, aRa, aXs]);
+
+      // Predict outputs using AI regression models
+      const mlPredictions = useMemo(() => {
+        if (activeFacility === "motor") {
+          const rawInput = [voltage, slip, frequency];
+          const modelsObj = activeData[selectedDataset];
+          if (!modelsObj || !modelsObj.models) return null;
+          
+          const mean = modelsObj.scaler.mean;
+          const scale = modelsObj.scaler.scale;
+          const scaledX = rawInput.map((v, i) => (v - mean[i]) / scale[i]);
+
+          const names = ["Efficiency", "PowerFactor", "Torque", "I1", "P_in"];
+          const predictions = {};
+          
+          names.forEach((name, i) => {
+            const polyVal = evalPoly(modelsObj.models.poly.coefs[i], rawInput);
+            const rfVal = evalForest(modelsObj.models.rf.forests[i], rawInput);
+            const mlpVal = evalMLP(modelsObj.models.mlp.networks[i], scaledX);
+            
+            predictions[name] = {
+              poly: polyVal, rf: rfVal, mlp: mlpVal,
+              r2: {
+                poly: modelsObj.models.poly.r2[i],
+                rf: modelsObj.models.rf.r2[i],
+                mlp: modelsObj.models.mlp.r2[i]
+              }
+            };
+          });
+          return predictions;
+        } else {
+          const rawInput = [aIf, aIa, Math.acos(Math.abs(aPF)) * (aPF < 0 ? -1 : 1)];
+          const modelsObj = activeData.alternator;
+          if (!modelsObj || !modelsObj.models) return null;
+          
+          const mean = modelsObj.models.scaler.mean;
+          const scale = modelsObj.models.scaler.scale;
+          const scaledX = rawInput.map((v, i) => (v - mean[i]) / scale[i]);
+
+          const names = ["VoltageRegulation", "Efficiency", "Losses", "Vt_line", "Eph"];
+          const predictions = {};
+          
+          names.forEach((name, i) => {
+            const polyVal = evalPoly(modelsObj.models.poly.coefs[i], rawInput);
+            const rfVal = evalForest(modelsObj.models.rf.forests[i], rawInput);
+            const mlpVal = evalMLP(modelsObj.models.mlp.networks[i], scaledX);
+            
+            predictions[name] = {
+              poly: polyVal, rf: rfVal, mlp: mlpVal,
+              r2: {
+                poly: modelsObj.models.poly.r2[i],
+                rf: modelsObj.models.rf.r2[i],
+                mlp: modelsObj.models.mlp.r2[i]
+              }
+            };
+          });
+          return predictions;
+        }
+      }, [activeFacility, selectedDataset, voltage, slip, frequency, aIf, aIa, aPF]);
+
+      // Timeline playback sweep
+      useEffect(() => {
+        let interval = null;
+        if (isPlaying) {
+          interval = setInterval(() => {
+            if (activeFacility === "motor") {
+              setPlaybackIndex((prev) => {
+                const exp = activeData[selectedDataset].experimental;
+                const next = (prev + 1) % exp.V_line.length;
+                setVoltage(exp.V_line[next]);
+                setSlip(exp.slip[next] / 100);
+                return next;
+              });
+            } else {
+              setPlaybackIndex((prev) => {
+                const exp = activeData.alternator.experimental;
+                const next = (prev + 1) % exp.V_line.length;
+                setAIf(exp.I_f[next]);
+                setAIa(exp.I_line[next]);
+                return next;
+              });
+            }
+          }, 2000);
+        } else {
+          clearInterval(interval);
+        }
+        return () => clearInterval(interval);
+      }, [isPlaying, selectedDataset, activeFacility]);
+
+      // Trigger transition screens
+      useEffect(() => {
+        if (view === "dashboard") {
+          const overlay = document.getElementById("transition-overlay");
+          if (overlay) {
+            setTimeout(() => {
+              overlay.style.opacity = "0";
+              overlay.classList.add("pointer-events-none");
+            }, 100);
+          }
+        }
+      }, [view]);
+
+      const handleObservationChange = (index, field, val, facility) => {
+        if (facility === "motor") {
+          const updated = [...motorObservationTable];
+          updated[index][field] = parseFloat(val) || 0;
+          setMotorObservationTable(updated);
+        } else {
+          const updated = [...altObservationTable];
+          updated[index][field] = parseFloat(val) || 0;
+          setAltObservationTable(updated);
+        }
+      };
+
+      const navigateToSection = (sectionId) => {
+        setActiveTab(sectionId);
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      };
+
+      // Control presets handler
+      const applyPreset = (presetName) => {
+        if (activeFacility === "motor") {
+          switch (presetName) {
+            case "noload":
+              setSlip(0.001);
+              setLoadTorque(0.2);
+              break;
+            case "halfload":
+              setSlip(0.015);
+              setLoadTorque(5.0);
+              break;
+            case "fullload":
+              setSlip(0.032);
+              setLoadTorque(11.2);
+              break;
+            case "blocked":
+              setSlip(1.0);
+              setLoadTorque(35.0);
+              break;
+          }
+        } else {
+          switch (presetName) {
+            case "noload":
+              setAIa(0.0);
+              setAPF(1.0);
+              break;
+            case "lagging":
+              setAIa(5.0);
+              setAPF(0.8);
+              break;
+            case "unity":
+              setAIa(5.0);
+              setAPF(1.0);
+              break;
+            case "leading":
+              setAIa(5.0);
+              setAPF(-0.8);
+              break;
+          }
+        }
+      };
+
+      return (
+        <div className="w-full h-full flex flex-col justify-between select-none">
+          {/* Header */}
+          <header className="glass-header w-full px-6 py-3 flex items-center justify-between z-30 sticky top-0 shrink-0">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center glow-blue border border-indigo-400">
+                <i className="fa-solid fa-industry text-yellow-400 text-base"></i>
+              </div>
+              <div>
+                <h1 className="space-font font-bold text-base tracking-wider text-glow-gold text-yellow-500 uppercase">
+                  Electrical Machines Digital Twin
+                </h1>
+                <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">
+                  {activeFacility === "motor" ? "Kirloskar Electric Cage IM // Twin Deck" : "Crompton Greaves Synchronous Generator // Lab Bay"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              {view === "dashboard" && (
+                <button 
+                  onClick={() => {
+                    const overlay = document.getElementById("transition-overlay");
+                    if (overlay) {
+                      overlay.classList.remove("pointer-events-none");
+                      overlay.style.opacity = "1";
+                    }
+                    setTimeout(() => setView("hero"), 600);
+                  }}
+                  className="px-4 py-1.5 text-xs font-bold bg-slate-900 border border-slate-700 hover:border-yellow-500 text-yellow-500 rounded transition-all">
+                  <i className="fa-solid fa-arrow-left-long mr-1.5"></i> Return to Facility Map
+                </button>
+              )}
+            </div>
+          </header>
+
+          {/* Main Space Container */}
+          <div className="flex-grow relative w-full overflow-hidden">
+            {view === "hero" ? (
+              <HeroSection 
+                setView={setView} 
+                setActiveFacility={setActiveFacility}
+                selectedDataset={selectedDataset} 
+                setSelectedDataset={setSelectedDataset}
+                motorSpeed={motorPhysicsResults.speed}
+                altSpeed={aSpeed}
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col overflow-y-auto bg-slate-950/90 scroll-smooth">
+                
+                {/* Upper Half: 3D Viewport with Floating panels */}
+                <div className="relative w-full h-[550px] shrink-0 border-b border-slate-900 bg-slate-950 flex flex-col md:flex-row items-center justify-center">
+                  
+                  {/* Floating Overlay Left: Console Controls */}
+                  <div className="absolute left-6 top-6 z-25 w-80 glass-card p-4 space-y-4 max-h-[500px] overflow-y-auto select-none pointer-events-auto">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <h3 className="space-font font-bold text-xs text-yellow-500 uppercase tracking-widest">
+                        <i className="fa-solid fa-sliders mr-2"></i> Control Desk
+                      </h3>
+                      <span className="text-[9px] text-blue-400 font-bold bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-900 uppercase">
+                        {activeFacility}
+                      </span>
+                    </div>
+
+                    {activeFacility === "motor" ? (
+                      <div className="space-y-3.5">
+                        <SliderControl label="Supply Line Voltage" min={0} max={480} step={1} value={voltage} setValue={setVoltage} suffix=" V" />
+                        <SliderControl label="Motor Slip" min={0} max={0.1} step={0.0005} value={slip} setValue={setSlip} suffix={` (${(slip*100).toFixed(2)}%)`} />
+                        <SliderControl label="Supply Frequency" min={10} max={70} step={0.1} value={frequency} setValue={setFrequency} suffix=" Hz" />
+                        <SliderControl label="Load Torque (T)" min={0} max={30} step={0.1} value={loadTorque} setValue={setLoadTorque} suffix=" Nm" />
+                        
+                        {/* Presets Tester */}
+                        <div className="pt-2 border-t border-slate-900">
+                          <span className="text-[9px] text-slate-500 uppercase font-bold block mb-1">Preset Conditions</span>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button onClick={() => applyPreset("noload")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">No Load</button>
+                            <button onClick={() => applyPreset("halfload")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">Half Load</button>
+                            <button onClick={() => applyPreset("fullload")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">Full Load</button>
+                            <button onClick={() => applyPreset("blocked")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">Blocked Rotor</button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3.5">
+                        <SliderControl label="Field Current (If)" min={0.8} max={1.3} step={0.005} value={aIf} setValue={setAIf} suffix=" A" />
+                        <SliderControl label="Armature Load Current (Ia)" min={0.0} max={7.0} step={0.1} value={aIa} setValue={setAIa} suffix=" A" />
+                        <SliderControl label="Power Factor" min={-1.0} max={1.0} step={0.01} value={aPF} setValue={setAPF} suffix={aPF >= 0 ? ` (${aPF.toFixed(2)} Lag)` : ` (${Math.abs(aPF).toFixed(2)} Lead)`} />
+                        <SliderControl label="Rotor Speed" min={1000} max={2000} step={10} value={aSpeed} setValue={setASpeed} suffix=" RPM" />
+
+                        {/* Presets Tester */}
+                        <div className="pt-2 border-t border-slate-900">
+                          <span className="text-[9px] text-slate-500 uppercase font-bold block mb-1">Preset Conditions</span>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button onClick={() => applyPreset("noload")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">No Load</button>
+                            <button onClick={() => applyPreset("lagging")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">0.8 Lagging</button>
+                            <button onClick={() => applyPreset("unity")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">1.0 Unity</button>
+                            <button onClick={() => applyPreset("leading")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">0.8 Leading</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-2">
+                      <button 
+                        onClick={() => setIsPlaying(!isPlaying)}
+                        className={`w-full py-2 text-xs font-bold rounded flex items-center justify-center space-x-1.5 transition-all ${isPlaying ? 'bg-amber-600' : 'bg-emerald-600'} text-white`}>
+                        <i className={`fa-solid ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+                        <span>{isPlaying ? 'Pause Sweep' : 'Auto Sweep Data'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 3D Canvas Viewport */}
+                  <div className="w-full h-full">
+                    <Twin3dTab 
+                      facility={activeFacility}
+                      motorSpeed={motorPhysicsResults.speed}
+                      altSpeed={aSpeed}
+                      fluxIntensity={activeFacility === "motor" ? frequency/50 : aIf/1.05}
+                      showFlux={showFlux}
+                      showRotation={showRotation}
+                      showCutaway={showCutaway}
+                      showThermal={showThermal}
+                      motorS1={motorPhysicsResults.S1}
+                      motorS2={motorPhysicsResults.S2}
+                      loadTorque={loadTorque}
+                      setLoadTorque={setLoadTorque}
+                      setHoveredPart={setHoveredPart}
+                    />
+                  </div>
+
+                  {/* Floating Overlay Right: Live circular telemetry */}
+                  <div className="absolute right-6 top-6 z-25 w-80 space-y-4 max-h-[500px] overflow-y-auto select-none pointer-events-auto">
+                    
+                    {/* Machine Stamped Metal Nameplate */}
+                    <div className="stamped-nameplate p-3 rounded-lg border border-slate-500 text-slate-300 font-mono text-[9px] leading-tight space-y-1 glow-gold">
+                      {activeFacility === "motor" ? (
+                        <>
+                          <div className="text-center font-bold border-b border-slate-700 pb-1 mb-1 text-[10px] text-yellow-500 space-font">KIRLOSKAR ELECTRIC CO. LTD.</div>
+                          <div className="flex justify-between"><span>TYPE: KE-IM2.2</span> <span>NO: 785942-A</span></div>
+                          <div className="flex justify-between"><span>POWER: 2.2 kW / 3 HP</span> <span>RPM: 1440</span></div>
+                          <div className="flex justify-between"><span>VOLTS: 415 V Δ</span> <span>AMPS: 4.6 A</span></div>
+                          <div className="flex justify-between"><span>INS.CL: F // IP55</span> <span>Hz: 50 Hz</span></div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-center font-bold border-b border-slate-700 pb-1 mb-1 text-[10px] text-yellow-500 space-font">CROMPTON GREAVES LTD.</div>
+                          <div className="flex justify-between"><span>TYPE: CG-SA3.5</span> <span>NO: 994852-X</span></div>
+                          <div className="flex justify-between"><span>CAPACITY: 3.5 kVA</span> <span>RPM: 1500</span></div>
+                          <div className="flex justify-between"><span>VOLTS: 415 V Y</span> <span>AMPS: 5.0 A</span></div>
+                          <div className="flex justify-between"><span>EXC.VOLT: 110V DC</span> <span>EXC.AMP: 1.2A</span></div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="glass-card p-4 space-y-4">
+                      <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                        <h3 className="space-font font-bold text-xs text-yellow-500 uppercase tracking-widest">
+                          <i className="fa-solid fa-chart-line mr-2"></i> Live Telemetry
+                        </h3>
+                        <span className="text-[9px] text-emerald-400 font-mono">ONLINE</span>
+                      </div>
+
+                      {activeFacility === "motor" ? (
+                        <div className="space-y-2 text-xs">
+                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
+                            <span className="text-[10px] text-slate-400">Rotor Speed</span>
+                            <span className="text-sm font-bold text-yellow-500 font-mono">{motorPhysicsResults.speed.toFixed(0)} RPM</span>
+                          </div>
+                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
+                            <span className="text-[10px] text-slate-400">Efficiency</span>
+                            <span className="text-sm font-bold text-emerald-400 font-mono">{motorPhysicsResults.eff.toFixed(1)} %</span>
+                          </div>
+                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
+                            <span className="text-[10px] text-slate-400">Winding Temp</span>
+                            <span className="text-sm font-bold text-red-400 font-mono">{motorPhysicsResults.winding_temp.toFixed(1)} °C</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 text-xs">
+                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
+                            <span className="text-[10px] text-slate-400">Terminal Line Vt</span>
+                            <span className="text-sm font-bold text-yellow-500 font-mono">{alternatorPhysicsResults.vt_line.toFixed(1)} V</span>
+                          </div>
+                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
+                            <span className="text-[10px] text-slate-400">Generated EMF Eph</span>
+                            <span className="text-sm font-bold text-emerald-400 font-mono">{alternatorPhysicsResults.Eph.toFixed(1)} V</span>
+                          </div>
+                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
+                            <span className="text-[10px] text-slate-400">Voltage Regulation</span>
+                            <span className="text-sm font-bold text-indigo-400 font-mono">{alternatorPhysicsResults.vr.toFixed(2)} %</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Scope Screen */}
+                      <div className="border border-slate-800 rounded p-2 bg-slate-950/70">
+                        <span className="text-[8px] text-slate-500 font-mono block mb-1">OSCILLOSCOPE WAVEFORM</span>
+                        <Oscilloscope frequency={activeFacility === "motor" ? frequency : aSpeed/30.0} voltage={activeFacility === "motor" ? voltage : alternatorPhysicsResults.vt_line} />
+                      </div>
+
+                      {/* Hovered Component Display */}
+                      <div className="border border-yellow-950/80 rounded p-2 bg-yellow-950/20 text-center">
+                        <span className="text-[8px] text-slate-400 block">HOVERED PART</span>
+                        <p className="text-yellow-500 font-bold text-xs tracking-wider uppercase mt-1">
+                          {hoveredPart}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sleek Floating Visual Options checklists (bottom-middle) */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-25 bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl flex items-center space-x-4 pointer-events-auto text-[10px] font-bold text-slate-300">
+                    <label className="flex items-center space-x-1.5 cursor-pointer hover:text-white">
+                      <input type="checkbox" checked={showFlux} onChange={(e) => setShowFlux(e.target.checked)} className="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5" />
+                      <span>RMF Flux</span>
+                    </label>
+                    <label className="flex items-center space-x-1.5 cursor-pointer hover:text-white">
+                      <input type="checkbox" checked={showRotation} onChange={(e) => setShowRotation(e.target.checked)} className="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5" />
+                      <span>Rotation</span>
+                    </label>
+                    <label className="flex items-center space-x-1.5 cursor-pointer hover:text-white">
+                      <input type="checkbox" checked={showCutaway} onChange={(e) => setShowCutaway(e.target.checked)} className="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5" />
+                      <span>Cutaway View</span>
+                    </label>
+                    <label className="flex items-center space-x-1.5 cursor-pointer hover:text-white">
+                      <input type="checkbox" checked={showThermal} onChange={(e) => setShowThermal(e.target.checked)} className="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5" />
+                      <span>Heat Map</span>
+                    </label>
+                  </div>
+
+                </div>
+
+                {/* Lower Half Layout */}
+                <div className="w-full flex flex-col p-6 space-y-8 select-none bg-slate-950/40">
+                  
+                  {/* Internal Tabs Layout */}
+                  <div className="flex space-x-2 border-b border-slate-800 pb-3 overflow-x-auto shrink-0 sticky top-0 bg-slate-950 z-20 py-2">
+                    <button onClick={() => navigateToSection("eee-equations")} className={`px-4 py-1.5 rounded text-xs font-bold border transition-all ${activeTab === 'eee-equations' ? 'bg-indigo-950 border-indigo-500 text-yellow-500 animate-pulse' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
+                      <i className="fa-solid fa-calculator mr-1.5 text-yellow-500"></i> EEE Calculations
+                    </button>
+                    <button onClick={() => navigateToSection("equivalent-circuit")} className={`px-4 py-1.5 rounded text-xs font-bold border transition-all ${activeTab === 'equivalent-circuit' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
+                      <i className="fa-solid fa-bezier-curve mr-1.5 text-yellow-500"></i> Equivalent Circuit
+                    </button>
+                    <button onClick={() => navigateToSection("matlab-graphs")} className={`px-4 py-1.5 rounded text-xs font-bold border transition-all ${activeTab === 'matlab-graphs' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
+                      <i className="fa-solid fa-chart-line mr-1.5 text-yellow-500"></i> MATLAB Curves
+                    </button>
+                    {activeFacility === "alternator" && (
+                      <button onClick={() => navigateToSection("phasor-diagram")} className={`px-4 py-1.5 rounded text-xs font-bold border transition-all ${activeTab === 'phasor-diagram' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
+                        <i className="fa-solid fa-compass mr-1.5 text-yellow-500"></i> Phasor Diagram
+                      </button>
+                    )}
+                    <button onClick={() => navigateToSection("ai-predictions")} className={`px-4 py-1.5 rounded text-xs font-bold border transition-all ${activeTab === 'ai-predictions' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
+                      <i className="fa-solid fa-brain mr-1.5 text-yellow-500"></i> AI Twin Predictions
+                    </button>
+                    <button onClick={() => navigateToSection("lab-observations")} className={`px-4 py-1.5 rounded text-xs font-bold border transition-all ${activeTab === 'lab-observations' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
+                      <i className="fa-solid fa-table mr-1.5 text-yellow-500"></i> Observation Data
+                    </button>
+                    <button onClick={() => navigateToSection("reference-theory")} className={`px-4 py-1.5 rounded text-xs font-bold border transition-all ${activeTab === 'reference-theory' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
+                      <i className="fa-solid fa-book-open mr-1.5 text-yellow-500"></i> Reference & Theory
+                    </button>
+                  </div>
+
+                  {/* Section 1: EEE Calculations */}
+                  <section id="eee-equations" className="glass-card p-6 space-y-4 scroll-mt-20">
+                    <h3 className="space-font font-bold text-sm text-yellow-500 uppercase tracking-widest border-b border-slate-800 pb-2">
+                      <i className="fa-solid fa-calculator mr-2"></i> EEE Algebraic Calculation Solver
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Left Side: Parameters summary */}
+                      <div className="glass-card p-4 bg-slate-900/30 space-y-3">
+                        <h4 className="space-font font-bold text-xs text-indigo-400 uppercase tracking-wider">Current Operating Ratings</h4>
+                        {activeFacility === "motor" ? (
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="p-2 border border-slate-800 rounded bg-slate-950/40">
+                              <span className="text-[10px] text-slate-500 uppercase block">Line Voltage (VL)</span>
+                              <span className="font-bold font-mono text-slate-300">{voltage.toFixed(1)} V</span>
+                            </div>
+                            <div className="p-2 border border-slate-800 rounded bg-slate-950/40">
+                              <span className="text-[10px] text-slate-500 uppercase block">Line Current (IL)</span>
+                              <span className="font-bold font-mono text-slate-300">{motorPhysicsResults.i1_mag.toFixed(2)} A</span>
+                            </div>
+                            <div className="p-2 border border-slate-800 rounded bg-slate-950/40">
+                              <span className="text-[10px] text-slate-500 uppercase block">Frequency (f)</span>
+                              <span className="font-bold font-mono text-slate-300">{frequency.toFixed(1)} Hz</span>
+                            </div>
+                            <div className="p-2 border border-slate-800 rounded bg-slate-950/40">
+                              <span className="text-[10px] text-slate-500 uppercase block">Power Factor (cosφ)</span>
+                              <span className="font-bold font-mono text-slate-300">{motorPhysicsResults.pf.toFixed(3)}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="p-2 border border-slate-800 rounded bg-slate-950/40">
+                              <span className="text-[10px] text-slate-500 uppercase block">Excitation Current (If)</span>
+                              <span className="font-bold font-mono text-slate-300">{aIf.toFixed(2)} A</span>
+                            </div>
+                            <div className="p-2 border border-slate-800 rounded bg-slate-950/40">
+                              <span className="text-[10px] text-slate-500 uppercase block">Armature Current (Ia)</span>
+                              <span className="font-bold font-mono text-slate-300">{aIa.toFixed(2)} A</span>
+                            </div>
+                            <div className="p-2 border border-slate-800 rounded bg-slate-950/40">
+                              <span className="text-[10px] text-slate-500 uppercase block">Speed (N)</span>
+                              <span className="font-bold font-mono text-slate-300">{aSpeed.toFixed(0)} RPM</span>
+                            </div>
+                            <div className="p-2 border border-slate-800 rounded bg-slate-950/40">
+                              <span className="text-[10px] text-slate-500 uppercase block">Power Factor</span>
+                              <span className="font-bold font-mono text-slate-300">
+                                {Math.abs(aPF).toFixed(2)} {aPF >= 0 ? "Lag" : "Lead"}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Side: Step equations */}
+                      <div className="space-y-4">
+                        {activeFacility === "motor" ? (
+                          <>
+                            <CalculationBlock 
+                              title="Synchronous Speed (Ns)" 
+                              formula="N_s = \frac{120 \times f}{P}" 
+                              substitution={`N_s = \\frac{120 \\times ${frequency.toFixed(1)}}{4}`} 
+                              result={`${motorPhysicsResults.Ns.toFixed(0)} RPM`} 
+                            />
+                            <CalculationBlock 
+                              title="Stator Input Power (P1)" 
+                              formula="P_1 = \\sqrt{3} \\times V_L \\times I_L \\times \\cos\\phi" 
+                              substitution={`P_1 = 1.732 \\times ${voltage.toFixed(1)} \\times ${motorPhysicsResults.i1_mag.toFixed(2)} \\times ${motorPhysicsResults.pf.toFixed(3)}`} 
+                              result={`${motorPhysicsResults.p_in.toFixed(1)} W`} 
+                            />
+                            <CalculationBlock 
+                              title="Output Shaft Power (P2)" 
+                              formula="P_2 = \\frac{2 \\pi N T}{60}" 
+                              substitution={`P_2 = \\frac{2 \\pi \\times ${motorPhysicsResults.speed.toFixed(0)} \\times ${motorPhysicsResults.t_shaft.toFixed(2)}}{60}`} 
+                              result={`${motorPhysicsResults.p_out.toFixed(1)} W`} 
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <CalculationBlock 
+                              title="Generated EMF per-Phase (Eph)" 
+                              formula="E_{ph} = \sqrt{(V_t\cos\phi + I_a R_a)^2 + (V_t\sin\phi + I_a X_s)^2}" 
+                              substitution={`E_{ph} = \\sqrt{(${(alternatorPhysicsResults.vt_ph * Math.cos(Math.acos(Math.abs(aPF)))).toFixed(1)} + ${(aIa * aRa).toFixed(2)})^2 + (${(alternatorPhysicsResults.vt_ph * Math.sin(Math.acos(Math.abs(aPF)) * (aPF < 0 ? -1 : 1))).toFixed(1)} + ${(aIa * aXs).toFixed(2)})^2}`} 
+                              result={`${alternatorPhysicsResults.Eph.toFixed(2)} V`} 
+                            />
+                            <CalculationBlock 
+                              title="Output Active Power (Pout)" 
+                              formula="P_{out} = 3 \\times V_{t,ph} \\times I_a \\times \\cos\\phi" 
+                              substitution={`P_{out} = 3 \\times ${alternatorPhysicsResults.vt_ph.toFixed(1)} \\times ${aIa.toFixed(2)} \\times ${Math.abs(aPF).toFixed(2)}`} 
+                              result={`${alternatorPhysicsResults.p_out.toFixed(1)} W`} 
+                            />
+                            <CalculationBlock 
+                              title="Voltage Regulation (VR)" 
+                              formula="VR = \\frac{E_{ph} - V_{t,ph}}{V_{t,ph}} \\times 100" 
+                              substitution={`VR = \\frac{${alternatorPhysicsResults.Eph.toFixed(1)} - ${alternatorPhysicsResults.vt_ph.toFixed(1)}}{${alternatorPhysicsResults.vt_ph.toFixed(1)}} \\times 100`} 
+                              result={`${alternatorPhysicsResults.vr.toFixed(3)} %`} 
+                            />
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Section 2: Equivalent Circuit */}
+                  <section id="equivalent-circuit" className="glass-card p-6 space-y-4 scroll-mt-20">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <h3 className="space-font font-bold text-sm text-yellow-500 uppercase tracking-widest">
+                        <i className="fa-solid fa-bezier-curve mr-2"></i> Dynamic Equivalent Circuit Schematic
+                      </h3>
+                      {activeFacility === "motor" && (
+                        <div className="flex space-x-1.5 text-[10px]">
+                          <button onClick={() => setCircuitViewMode("per-phase")} className={`px-2 py-1 rounded border font-bold uppercase transition-all ${circuitViewMode === 'per-phase' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
+                            Per-Phase
+                          </button>
+                          <button onClick={() => setCircuitViewMode("approximate")} className={`px-2 py-1 rounded border font-bold uppercase transition-all ${circuitViewMode === 'approximate' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
+                            Approximate
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                      <div className="glass-card p-4 bg-slate-900/30 space-y-3 lg:col-span-1">
+                        <h4 className="space-font font-bold text-xs text-indigo-400 uppercase border-b border-slate-800 pb-2 mb-2">Edit Circuit Components</h4>
+                        {activeFacility === "motor" ? (
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <label className="text-[10px] text-slate-500 block">Stator R1 (Ω)</label>
+                              <input type="number" step="0.01" value={r1} onChange={(e) => setR1(parseFloat(e.target.value) || 0.1)} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-slate-200" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-500 block">Rotor R2' (Ω)</label>
+                              <input type="number" step="0.01" value={r2Prime} onChange={(e) => setR2Prime(parseFloat(e.target.value) || 0.1)} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-slate-200" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-500 block">Stator X1 (Ω)</label>
+                              <input type="number" step="0.01" value={x1} onChange={(e) => setX1(parseFloat(e.target.value) || 0.1)} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-slate-200" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-500 block">Rotor X2' (Ω)</label>
+                              <input type="number" step="0.01" value={x2Prime} onChange={(e) => setX2Prime(parseFloat(e.target.value) || 0.1)} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-slate-200" />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="col-span-2">
+                              <label className="text-[10px] text-slate-500 block">Armature Ra (Ω)</label>
+                              <input type="number" step="0.001" value={aRa} onChange={(e) => setARa(parseFloat(e.target.value) || 0.05)} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-slate-200" />
+                            </div>
+                            <div className="col-span-2">
+                              <label className="text-[10px] text-slate-500 block">Sync. Reactance Xs (Ω)</label>
+                              <input type="number" step="0.1" value={aXs} onChange={(e) => setAXs(parseFloat(e.target.value) || 1.0)} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-slate-200" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="lg:col-span-2 flex items-center justify-center p-4 bg-slate-950/60 rounded-xl border border-slate-800">
+                        {activeFacility === "motor" ? (
+                          circuitViewMode === "per-phase" ? (
+                            <svg viewBox="0 0 700 280" className="w-full h-auto max-h-[200px]">
+                              <text x="35" y="45" fill="#a7f3d0" fontSize="10" fontWeight="bold">Input V_ph = {motorPhysicsResults.V_ph.toFixed(1)}V</text>
+                              <line x1="35" y1="90" x2="60" y2="90" stroke="#3b82f6" strokeWidth="2.5" />
+                              <line x1="35" y1="90" x2="60" y2="90" stroke="#fbbf24" strokeWidth="2.5" className="wire-flow" />
+                              <rect x="60" y="80" width="40" height="20" fill="#1e293b" stroke="#fff" strokeWidth="1.5" />
+                              <text x="80" y="72" fill="#e2e8f0" fontSize="9" textAnchor="middle">R1 = {r1.toFixed(3)} Ω</text>
+                              <line x1="100" y1="90" x2="130" y2="90" stroke="#3b82f6" strokeWidth="2.5" />
+                              <line x1="100" y1="90" x2="130" y2="90" stroke="#fbbf24" strokeWidth="2.5" className="wire-flow" />
+                              <path d="M 130 90 L 135 80 L 140 100 L 145 80 L 150 100 L 155 80 L 160 100 L 165 90" fill="none" stroke="#d4af37" strokeWidth="2" />
+                              <text x="148" y="72" fill="#e2e8f0" fontSize="9" textAnchor="middle">jX1 = {x1.toFixed(3)} Ω</text>
+                              <line x1="165" y1="90" x2="260" y2="90" stroke="#3b82f6" strokeWidth="2.5" />
+                              <line x1="165" y1="90" x2="260" y2="90" stroke="#fbbf24" strokeWidth="2.5" className="wire-flow" />
+                              <circle cx="260" cy="90" r="3" fill="#fbbf24" />
+                              <line x1="260" y1="90" x2="260" y2="120" stroke="#3b82f6" strokeWidth="1.5" />
+                              <line x1="220" y1="120" x2="300" y2="120" stroke="#3b82f6" strokeWidth="1.5" />
+                              <rect x="205" y="135" width="30" height="40" fill="#1e293b" stroke="#fff" strokeWidth="1.5" />
+                              <text x="195" y="158" fill="#e2e8f0" fontSize="8" textAnchor="end">Rc = {rc.toFixed(1)} Ω</text>
+                              <line x1="220" y1="175" x2="220" y2="190" stroke="#3b82f6" strokeWidth="1.5" />
+                              <path d="M 300 135 L 290 140 L 310 145 L 290 150 L 310 155 L 290 160 L 310 165 L 300 170" fill="none" stroke="#d4af37" strokeWidth="2" />
+                              <text x="322" y="158" fill="#e2e8f0" fontSize="8" textAnchor="start">jXm = {xm.toFixed(1)} Ω</text>
+                              <line x1="300" y1="170" x2="300" y2="190" stroke="#3b82f6" strokeWidth="1.5" />
+                              <line x1="220" y1="190" x2="300" y2="190" stroke="#3b82f6" strokeWidth="1.5" />
+                              <line x1="260" y1="190" x2="260" y2="220" stroke="#3b82f6" strokeWidth="1.5" />
+                              <circle cx="260" cy="220" r="3" fill="#fbbf24" />
+                              <line x1="260" y1="90" x2="380" y2="90" stroke="#3b82f6" strokeWidth="2.5" />
+                              <path d="M 380 90 L 385 80 L 390 100 L 395 80 L 400 100 L 405 80 L 410 100 L 415 90" fill="none" stroke="#d4af37" strokeWidth="2" />
+                              <text x="398" y="72" fill="#e2e8f0" fontSize="9" textAnchor="middle">jX2' = {x2Prime.toFixed(3)} Ω</text>
+                              <line x1="415" y1="90" x2="450" y2="90" stroke="#3b82f6" strokeWidth="2.5" />
+                              <rect x="450" y="80" width="55" height="20" fill="#1e293b" stroke="#fff" strokeWidth="1.5" />
+                              <text x="478" y="72" fill="#e2e8f0" fontSize="9" textAnchor="middle">R2'/s = {(r2Prime/Math.max(0.0001, slip)).toFixed(3)} Ω</text>
+                              <line x1="505" y1="90" x2="540" y2="90" stroke="#3b82f6" strokeWidth="2.5" />
+                              <rect x="540" y="80" width="85" height="20" fill="#0f172a" stroke="#d4af37" strokeWidth="1.5" />
+                              <text x="582" y="93" fill="#fbbf24" fontSize="8" fontWeight="bold" textAnchor="middle">R2'(1-s)/s = {(r2Prime * (1 - slip)/Math.max(0.0001, slip)).toFixed(2)} Ω</text>
+                              <line x1="625" y1="90" x2="650" y2="90" stroke="#3b82f6" strokeWidth="2" />
+                              <line x1="650" y1="90" x2="650" y2="220" stroke="#3b82f6" strokeWidth="2" />
+                              <line x1="35" y1="220" x2="650" y2="220" stroke="#3b82f6" strokeWidth="2" />
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 700 280" className="w-full h-auto max-h-[200px]">
+                              <text x="35" y="45" fill="#a7f3d0" fontSize="10" fontWeight="bold">Approximate Phase V_ph = {motorPhysicsResults.V_ph.toFixed(1)}V</text>
+                              <line x1="35" y1="90" x2="100" y2="90" stroke="#3b82f6" strokeWidth="2.5" />
+                              <circle cx="100" cy="90" r="3" fill="#fbbf24" />
+                              <line x1="100" y1="90" x2="100" y2="120" stroke="#3b82f6" strokeWidth="1.5" />
+                              <line x1="60" y1="120" x2="140" y2="120" stroke="#3b82f6" strokeWidth="1.5" />
+                              <rect x="45" y="135" width="30" height="40" fill="#1e293b" stroke="#fff" strokeWidth="1.5" />
+                              <text x="35" y="158" fill="#e2e8f0" fontSize="8" textAnchor="end">Rc = {rc.toFixed(1)} Ω</text>
+                              <line x1="60" y1="175" x2="60" y2="190" stroke="#3b82f6" strokeWidth="1.5" />
+                              <path d="M 140 135 L 130 140 L 150 145 L 130 150 L 150 155 L 130 160 L 150 165 L 140 170" fill="none" stroke="#d4af37" strokeWidth="2" />
+                              <text x="162" y="158" fill="#e2e8f0" fontSize="8" textAnchor="start">jXm = {xm.toFixed(1)} Ω</text>
+                              <line x1="140" y1="170" x2="140" y2="190" stroke="#3b82f6" strokeWidth="1.5" />
+                              <line x1="60" y1="190" x2="140" y2="190" stroke="#3b82f6" strokeWidth="1.5" />
+                              <line x1="100" y1="190" x2="100" y2="220" stroke="#3b82f6" strokeWidth="1.5" />
+                              <circle cx="100" cy="220" r="3" fill="#fbbf24" />
+                              <line x1="100" y1="90" x2="200" y2="90" stroke="#3b82f6" strokeWidth="2.5" />
+                              <rect x="200" y="80" width="70" height="20" fill="#1e293b" stroke="#fff" strokeWidth="1.5" />
+                              <text x="235" y="72" fill="#e2e8f0" fontSize="9" textAnchor="middle">R1 + R2' = {(r1+r2Prime).toFixed(3)} Ω</text>
+                              <line x1="270" y1="90" x2="310" y2="90" stroke="#3b82f6" strokeWidth="2.5" />
+                              <path d="M 310 90 L 315 80 L 320 100 L 325 80 L 330 100 L 335 80 L 340 100 L 345 90" fill="none" stroke="#d4af37" strokeWidth="2" />
+                              <text x="328" y="72" fill="#e2e8f0" fontSize="9" textAnchor="middle">j(X1 + X2') = {(x1+x2Prime).toFixed(3)} Ω</text>
+                              <line x1="345" y1="90" x2="400" y2="90" stroke="#3b82f6" strokeWidth="2.5" />
+                              <rect x="400" y="80" width="130" height="20" fill="#0f172a" stroke="#d4af37" strokeWidth="1.5" />
+                              <text x="465" y="93" fill="#fbbf24" fontSize="8" fontWeight="bold" textAnchor="middle">Load: R2'(1-s)/s = {(r2Prime * (1 - slip)/Math.max(0.0001, slip)).toFixed(2)} Ω</text>
+                              <line x1="530" y1="90" x2="650" y2="90" stroke="#3b82f6" strokeWidth="2" />
+                              <line x1="650" y1="90" x2="650" y2="220" stroke="#3b82f6" strokeWidth="2" />
+                              <line x1="35" y1="220" x2="650" y2="220" stroke="#3b82f6" strokeWidth="2" />
+                            </svg>
+                          )
+                        ) : (
+                          // Alternator Armature Circuit SVG
+                          <svg viewBox="0 0 700 280" className="w-full h-auto max-h-[200px]">
+                            <text x="35" y="45" fill="#a7f3d0" fontSize="10" fontWeight="bold">Phase Voltage Vt = {alternatorPhysicsResults.vt_ph.toFixed(1)} V</text>
+                            
+                            {/* Excitation EMF source */}
+                            <circle cx="90" cy="110" r="24" fill="#0c1d36" stroke="#fbbf24" strokeWidth="2" />
+                            <text x="90" y="113" fill="#fbbf24" fontSize="9" fontWeight="bold" textAnchor="middle">Eph = {alternatorPhysicsResults.Eph.toFixed(1)}V</text>
+                            
+                            <line x1="114" y1="110" x2="160" y2="110" stroke="#3b82f6" strokeWidth="2.5" />
+                            <line x1="114" y1="110" x2="160" y2="110" stroke="#fbbf24" strokeWidth="2.5" className="wire-flow" />
+                            
+                            {/* Armature Resistance Ra */}
+                            <rect x="160" y="100" width="55" height="20" fill="#1e293b" stroke="#fff" strokeWidth="1.5" />
+                            <text x="187" y="92" fill="#e2e8f0" fontSize="9" textAnchor="middle">Ra = {aRa.toFixed(4)} Ω</text>
+                            
+                            <line x1="215" y1="110" x2="260" y2="110" stroke="#3b82f6" strokeWidth="2.5" />
+                            
+                            {/* Synchronous Reactance Xs */}
+                            <path d="M 260 110 L 265 100 L 270 120 L 275 100 L 280 120 L 285 100 L 290 120 L 295 110" fill="none" stroke="#d4af37" strokeWidth="2" />
+                            <text x="278" y="92" fill="#e2e8f0" fontSize="9" textAnchor="middle">jXs = {aXs.toFixed(2)} Ω</text>
+                            
+                            <line x1="295" y1="110" x2="400" y2="110" stroke="#3b82f6" strokeWidth="2.5" />
+                            
+                            {/* Output terminals load load */}
+                            <circle cx="400" cy="110" r="4" fill="#fbbf24" />
+                            <line x1="400" y1="110" x2="490" y2="110" stroke="#3b82f6" strokeWidth="2.5" />
+                            <rect x="490" y="90" width="110" height="40" fill="#0f172a" stroke="#fbbf24" strokeWidth="1.5" />
+                            <text x="545" y="105" fill="#e2e8f0" fontSize="8" fontWeight="bold" textAnchor="middle">3-PHASE GRID LOAD</text>
+                            <text x="545" y="120" fill="#fbbf24" fontSize="8" fontWeight="bold" textAnchor="middle">Ia = {aIa.toFixed(1)} A @ {Math.abs(aPF).toFixed(2)} PF</text>
+                            
+                            <line x1="600" y1="110" x2="630" y2="110" stroke="#3b82f6" strokeWidth="2" />
+                            <line x1="630" y1="110" x2="630" y2="200" stroke="#3b82f6" strokeWidth="2" />
+                            <line x1="90" y1="134" x2="90" y2="200" stroke="#3b82f6" strokeWidth="2" />
+                            <line x1="90" y1="200" x2="630" y2="200" stroke="#3b82f6" strokeWidth="2" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Section 3: Performance Curves Selector & Capability Circle Diagram */}
+                  <section id="matlab-graphs" className="glass-card p-6 space-y-4 scroll-mt-20">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <h3 className="space-font font-bold text-sm text-yellow-500 uppercase tracking-widest">
+                        <i className="fa-solid fa-chart-line mr-2"></i> Performance Characteristic Curves (Plotly)
+                      </h3>
+                      <button 
+                        onClick={() => {
+                          let csvContent = "";
+                          if (activeFacility === "motor") {
+                            csvContent = "data:text/csv;charset=utf-8,Slip,Speed,Torque,Power_In,Power_Out,Eff\n" + 
+                              `${slip},${motorPhysicsResults.speed.toFixed(1)},${motorPhysicsResults.t_shaft.toFixed(2)},${motorPhysicsResults.p_in.toFixed(1)},${motorPhysicsResults.p_out.toFixed(1)},${motorPhysicsResults.eff.toFixed(1)}`;
+                          } else {
+                            csvContent = "data:text/csv;charset=utf-8,If,Ia,Speed,Vt_line,Eph,VR,Power_Out,Eff\n" + 
+                              `${aIf},${aIa},${aSpeed},${alternatorPhysicsResults.vt_line.toFixed(1)},${alternatorPhysicsResults.Eph.toFixed(1)},${alternatorPhysicsResults.vr.toFixed(2)},${alternatorPhysicsResults.p_out.toFixed(1)},${alternatorPhysicsResults.eff.toFixed(1)}`;
+                          }
+                          const encodedUri = encodeURI(csvContent);
+                          const link = document.createElement("a");
+                          link.setAttribute("href", encodedUri);
+                          link.setAttribute("download", `${activeFacility}_sim_data.csv`);
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="px-3 py-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded text-[10px] text-yellow-500 font-bold uppercase transition-all">
+                        <i className="fa-solid fa-download mr-1"></i> Export Simulation Data
+                      </button>
+                    </div>
+
+                    <CurvesDeck 
+                      facility={activeFacility}
+                      r1={r1} r2Prime={r2Prime} x1={x1} x2Prime={x2Prime} xm={xm} rc={rc} pRot={pRot} voltage={voltage} frequency={frequency} currentSlip={slip} currentPower={motorPhysicsResults.p_out}
+                      aIf={aIf} aIa={aIa} aPF={aPF} aSpeed={aSpeed} aRa={aRa} aXs={aXs} alternatorResults={alternatorPhysicsResults}
+                    />
+                  </section>
+
+                  {/* Section 4: Alternator Interactive Phasor Diagram */}
+                  {activeFacility === "alternator" && (
+                    <section id="phasor-diagram" className="glass-card p-6 space-y-4 scroll-mt-20">
+                      <h3 className="space-font font-bold text-sm text-yellow-500 uppercase tracking-widest border-b border-slate-800 pb-2">
+                        <i className="fa-solid fa-compass mr-2"></i> Synchronous Phasor Diagram Plotter
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                        <div className="lg:col-span-2 flex items-center justify-center p-4 bg-slate-950/60 rounded-xl border border-slate-800">
+                          <PhasorDiagram 
+                            aIa={aIa} 
+                            aPF={aPF} 
+                            aRa={aRa} 
+                            aXs={aXs} 
+                            vt_ph={alternatorPhysicsResults.vt_ph} 
+                            Eph={alternatorPhysicsResults.Eph} 
+                          />
+                        </div>
+                        
+                        <div className="lg:col-span-1 glass-card p-4 space-y-3 text-xs leading-relaxed text-slate-350">
+                          <h4 className="space-font font-bold text-xs text-indigo-400 uppercase border-b border-slate-800 pb-2 mb-2">Vector Magnitude & Angle Specs</h4>
+                          <p>
+                            The generated electromotive force <MathEquation tex="E_{ph}" inline={true} /> lags or leads the terminal voltage <MathEquation tex="V_t" inline={true} /> vector by the power torque angle <MathEquation tex="\delta" inline={true} />.
+                          </p>
+                          <div className="space-y-2 text-[11px] font-mono text-slate-300">
+                            <div className="flex justify-between border-b border-slate-800 pb-1">
+                              <span>Terminal Voltage Vt:</span>
+                              <span className="text-blue-400 font-bold">{alternatorPhysicsResults.vt_ph.toFixed(1)} V ∠0°</span>
+                            </div>
+                            <div className="flex justify-between border-b border-slate-800 pb-1">
+                              <span>Armature Current Ia:</span>
+                              <span className="text-slate-400 font-bold">{aIa.toFixed(2)} A ∠{(Math.acos(Math.abs(aPF))*(aPF < 0 ? 1 : -1) * 180 / Math.PI).toFixed(1)}°</span>
+                            </div>
+                            <div className="flex justify-between border-b border-slate-800 pb-1">
+                              <span>Resistive Drop Ia*Ra:</span>
+                              <span className="text-yellow-500 font-bold">{(aIa * aRa).toFixed(2)} V</span>
+                            </div>
+                            <div className="flex justify-between border-b border-slate-800 pb-1">
+                              <span>Reactance Drop Ia*Xs:</span>
+                              <span className="text-red-500 font-bold">{(aIa * aXs).toFixed(1)} V</span>
+                            </div>
+                            <div className="flex justify-between border-b border-slate-800 pb-1 font-bold">
+                              <span>Generated EMF Eph:</span>
+                              <span className="text-emerald-400">{alternatorPhysicsResults.Eph.toFixed(1)} V</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Section 5: AI twin predictions */}
+                  <section id="ai-predictions" className="glass-card p-6 space-y-4 scroll-mt-20">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <h3 className="space-font font-bold text-sm text-yellow-500 uppercase tracking-widest">
+                        <i className="fa-solid fa-brain mr-2"></i> AI Twin Real-Time Performance Predictor
+                      </h3>
+                      <div className="flex space-x-1.5 text-[10px]">
+                        <button onClick={() => setSelectedMLModel("mlp")} className={`px-2 py-1 rounded border font-bold uppercase transition-all ${selectedMLModel === 'mlp' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>Neural Net (MLP)</button>
+                        <button onClick={() => setSelectedMLModel("rf")} className={`px-2 py-1 rounded border font-bold uppercase transition-all ${selectedMLModel === 'rf' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>Random Forest</button>
+                        <button onClick={() => setSelectedMLModel("poly")} className={`px-2 py-1 rounded border font-bold uppercase transition-all ${selectedMLModel === 'poly' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>Polynomial Reg.</button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      
+                      <div className="lg:col-span-2 glass-card p-4 space-y-3">
+                        <h4 className="space-font font-bold text-xs text-indigo-400 uppercase border-b border-slate-800 pb-2">Model Outputs vs. Physical Equations</h4>
+                        <div className="space-y-2.5 text-xs">
+                          {activeFacility === "motor" ? (
+                            <>
+                              <PredictionRow label="Efficiency (%)" mlVal={mlPredictions?.Efficiency?.[selectedMLModel]} eqVal={motorPhysicsResults.eff} unit="%" />
+                              <PredictionRow label="Power Factor" mlVal={mlPredictions?.PowerFactor?.[selectedMLModel]} eqVal={motorPhysicsResults.pf} unit="" />
+                              <PredictionRow label="Shaft Torque (Nm)" mlVal={mlPredictions?.Torque?.[selectedMLModel]} eqVal={motorPhysicsResults.t_shaft} unit=" Nm" />
+                              <PredictionRow label="Line Current (A)" mlVal={mlPredictions?.I1?.[selectedMLModel]} eqVal={motorPhysicsResults.i1_mag} unit=" A" />
+                              <PredictionRow label="Input Active Power (W)" mlVal={mlPredictions?.P_in?.[selectedMLModel]} eqVal={motorPhysicsResults.p_in} unit=" W" />
+                            </>
+                          ) : (
+                            <>
+                              <PredictionRow label="Voltage Regulation (%)" mlVal={mlPredictions?.VoltageRegulation?.[selectedMLModel]} eqVal={alternatorPhysicsResults.vr} unit="%" />
+                              <PredictionRow label="Efficiency (%)" mlVal={mlPredictions?.Efficiency?.[selectedMLModel]} eqVal={alternatorPhysicsResults.eff} unit="%" />
+                              <PredictionRow label="Total Losses (W)" mlVal={mlPredictions?.Losses?.[selectedMLModel]} eqVal={alternatorPhysicsResults.losses} unit=" W" />
+                              <PredictionRow label="Terminal Line Voltage (V)" mlVal={mlPredictions?.Vt_line?.[selectedMLModel]} eqVal={alternatorPhysicsResults.vt_line} unit=" V" />
+                              <PredictionRow label="Generated EMF (V)" mlVal={mlPredictions?.Eph?.[selectedMLModel]} eqVal={alternatorPhysicsResults.Eph} unit=" V" />
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="lg:col-span-1 glass-card p-4 space-y-3 font-mono text-[11px]">
+                        <h4 className="space-font font-bold text-xs text-indigo-400 uppercase border-b border-slate-800 pb-2">Model R² Accuracy Comparison</h4>
+                        <table className="w-full text-left text-slate-350">
+                          <thead>
+                            <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase">
+                              <th className="py-1.5">Output Metric</th>
+                              <th>MLP</th>
+                              <th>RF</th>
+                              <th>Poly</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activeFacility === "motor" ? (
+                              <>
+                                <AccuracyRow label="Efficiency" predData={mlPredictions?.Efficiency} />
+                                <AccuracyRow label="Power Factor" predData={mlPredictions?.PowerFactor} />
+                                <AccuracyRow label="Torque" predData={mlPredictions?.Torque} />
+                                <AccuracyRow label="Current I1" predData={mlPredictions?.I1} />
+                                <AccuracyRow label="Power In" predData={mlPredictions?.P_in} />
+                              </>
+                            ) : (
+                              <>
+                                <AccuracyRow label="Vol. Reg" predData={mlPredictions?.VoltageRegulation} />
+                                <AccuracyRow label="Efficiency" predData={mlPredictions?.Efficiency} />
+                                <AccuracyRow label="Losses" predData={mlPredictions?.Losses} />
+                                <AccuracyRow label="Line Vt" predData={mlPredictions?.Vt_line} />
+                                <AccuracyRow label="EMF Eph" predData={mlPredictions?.Eph} />
+                              </>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                    </div>
+                  </section>
+
+                  {/* Section 6: Live Observation Table */}
+                  <section id="lab-observations" className="glass-card p-6 space-y-4 scroll-mt-20">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <h3 className="space-font font-bold text-sm text-yellow-500 uppercase tracking-widest">
+                        <i className="fa-solid fa-table mr-2"></i> Live Lab Observations & Measurements
+                      </h3>
+                      <button 
+                        onClick={() => {
+                          if (activeFacility === "motor") {
+                            setMotorObservationTable(prev => [
+                              ...prev,
+                              {
+                                id: prev.length + 1,
+                                v: voltage,
+                                i: Number(motorPhysicsResults.i1_mag.toFixed(2)),
+                                p: Number(motorPhysicsResults.p_in.toFixed(0)),
+                                s1: Number(motorPhysicsResults.S1.toFixed(2)),
+                                s2: Number(motorPhysicsResults.S2.toFixed(2)),
+                                speed: Number(motorPhysicsResults.speed.toFixed(0))
+                              }
+                            ]);
+                          } else {
+                            setAltObservationTable(prev => [
+                              ...prev,
+                              {
+                                id: prev.length + 1,
+                                iff: aIf,
+                                ia: aIa,
+                                vt_l: Number(alternatorPhysicsResults.vt_line.toFixed(1)),
+                                p_out: Number(alternatorPhysicsResults.p_out.toFixed(0)),
+                                vr: Number(alternatorPhysicsResults.vr.toFixed(2))
+                              }
+                            ]);
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-[#d4af37] hover:bg-yellow-500 text-black text-xs font-bold uppercase rounded flex items-center gap-1.5 transition-all">
+                        <i className="fa-solid fa-plus"></i> Log Current Vector
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      {activeFacility === "motor" ? (
+                        <table className="w-full text-left text-xs font-mono text-slate-300">
+                          <thead>
+                            <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase">
+                              <th className="py-2">No.</th>
+                              <th>Voltage (V)</th>
+                              <th>Current (A)</th>
+                              <th>Power In (W)</th>
+                              <th>S1 (kg)</th>
+                              <th>S2 (kg)</th>
+                              <th>Speed (RPM)</th>
+                              <th>Torque (Nm)</th>
+                              <th>Slip (%)</th>
+                              <th>Eff (%)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {motorObservationTable.map((row, idx) => {
+                              const s = Math.max(0.0001, (1500 - row.speed) / 1500);
+                              const calcTorque = (row.s2 - row.s1) * 9.81 * 0.126;
+                              const calcPowerOut = (2 * Math.PI * row.speed * calcTorque) / 60;
+                              const calcEff = row.p > 0 ? (calcPowerOut / row.p) * 100 : 0;
+                              return (
+                                <tr key={row.id} className="border-b border-slate-800 hover:bg-slate-900/40">
+                                  <td className="py-2 text-[10px] text-slate-500">{row.id}</td>
+                                  <td>
+                                    <input type="number" value={row.v} onChange={(e) => handleObservationChange(idx, 'v', e.target.value, 'motor')} className="w-16 bg-slate-900 border border-slate-800 text-xs text-yellow-500 px-1 py-0.5" />
+                                  </td>
+                                  <td>
+                                    <input type="number" value={row.i} onChange={(e) => handleObservationChange(idx, 'i', e.target.value, 'motor')} className="w-16 bg-slate-900 border border-slate-800 text-xs px-1 py-0.5" />
+                                  </td>
+                                  <td>
+                                    <input type="number" value={row.p} onChange={(e) => handleObservationChange(idx, 'p', e.target.value, 'motor')} className="w-16 bg-slate-900 border border-slate-800 text-xs px-1 py-0.5" />
+                                  </td>
+                                  <td>
+                                    <input type="number" value={row.s1} onChange={(e) => handleObservationChange(idx, 's1', e.target.value, 'motor')} className="w-12 bg-slate-900 border border-slate-800 text-xs px-1 py-0.5" />
+                                  </td>
+                                  <td>
+                                    <input type="number" value={row.s2} onChange={(e) => handleObservationChange(idx, 's2', e.target.value, 'motor')} className="w-12 bg-slate-900 border border-slate-800 text-xs px-1 py-0.5" />
+                                  </td>
+                                  <td>
+                                    <input type="number" value={row.speed} onChange={(e) => handleObservationChange(idx, 'speed', e.target.value, 'motor')} className="w-16 bg-slate-900 border border-slate-800 text-xs px-1 py-0.5" />
+                                  </td>
+                                  <td className="text-yellow-500 font-bold">{calcTorque.toFixed(2)}</td>
+                                  <td className="text-indigo-400">{(s * 100).toFixed(2)}%</td>
+                                  <td className="text-emerald-400 font-bold">{calcEff.toFixed(1)}%</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <table className="w-full text-left text-xs font-mono text-slate-300">
+                          <thead>
+                            <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase">
+                              <th className="py-2">No.</th>
+                              <th>Field Exc. If (A)</th>
+                              <th>Armature Load Ia (A)</th>
+                              <th>Terminal Voltage VL (V)</th>
+                              <th>Generated Power (W)</th>
+                              <th>Voltage Reg. VR (%)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {altObservationTable.map((row, idx) => {
+                              return (
+                                <tr key={row.id} className="border-b border-slate-800 hover:bg-slate-900/40">
+                                  <td className="py-2 text-[10px] text-slate-500">{row.id}</td>
+                                  <td>
+                                    <input type="number" step="0.01" value={row.iff} onChange={(e) => handleObservationChange(idx, 'iff', e.target.value, 'alternator')} className="w-20 bg-slate-900 border border-slate-800 text-xs text-yellow-500 px-1 py-0.5" />
+                                  </td>
+                                  <td>
+                                    <input type="number" step="0.1" value={row.ia} onChange={(e) => handleObservationChange(idx, 'ia', e.target.value, 'alternator')} className="w-20 bg-slate-900 border border-slate-800 text-xs px-1 py-0.5" />
+                                  </td>
+                                  <td>
+                                    <input type="number" value={row.vt_l} onChange={(e) => handleObservationChange(idx, 'vt_l', e.target.value, 'alternator')} className="w-24 bg-slate-900 border border-slate-800 text-xs px-1 py-0.5" />
+                                  </td>
+                                  <td className="text-orange-400 font-bold">{row.p_out.toFixed(0)} W</td>
+                                  <td className="text-emerald-400 font-bold">{row.vr.toFixed(2)} %</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </section>
+
+                  {/* Section 7: Reference manual & theory */}
+                  <section id="reference-theory" className="glass-card p-6 space-y-5 scroll-mt-20 leading-relaxed text-slate-300">
+                    <h3 className="space-font font-bold text-sm text-yellow-500 uppercase tracking-widest text-glow-gold">
+                      <i className="fa-solid fa-book-open mr-2"></i> Reference Documentation & Laboratory Guide
+                    </h3>
+                    
+                    {activeFacility === "motor" ? (
+                      <div className="space-y-6 text-sm">
+                        <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800/80">
+                          <h4 className="font-bold text-yellow-500 mb-2 space-font uppercase tracking-wider text-xs">⚡ Working Principle:</h4>
+                          <p className="text-slate-400 text-xs">
+                            An induction motor operates on the principle of Faraday's Law of Electromagnetic Induction. When a 3-phase stator winding is excited by a balanced 3-phase AC supply, it establishes a Rotating Magnetic Field (RMF) that spins at synchronous speed (Ns). As this RMF sweeps past the rotor conductors, it induces an electromotive force (EMF) in them due to relative motion, generating rotor current. The interaction of these induced rotor currents with the stator RMF creates torque, dragging the rotor in the direction of the rotating field.
+                          </p>
+                        </div>
+                        <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800/80">
+                          <h4 className="font-bold text-yellow-500 mb-2 space-font uppercase tracking-wider text-xs">⚡ Synchronous Speed and Slip Concept:</h4>
+                          <p className="text-slate-400 text-xs">
+                            The synchronous speed of the RMF is governed by the line frequency (f) and poles (P):
+                          </p>
+                          <div className="my-3 text-center">
+                            <MathEquation tex={`N_s = \\frac{120f}{P}`} />
+                          </div>
+                          <p className="text-slate-400 text-xs">
+                            The rotor cannot spin at synchronous speed, as the relative velocity would drop to zero, stopping torque production. The normalized difference between synchronous speed and actual rotor speed is the Slip:
+                          </p>
+                          <div className="my-3 text-center">
+                            <MathEquation tex={`s = \\frac{N_s - N}{N_s}`} />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-6 text-sm">
+                        <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800/80">
+                          <h4 className="font-bold text-yellow-500 mb-2 space-font uppercase tracking-wider text-xs">⚡ Generated EMF and Terminal Voltage:</h4>
+                          <p className="text-slate-400 text-xs">
+                            In a synchronous alternator, the rotor field coils are supplied with DC excitation current <MathEquation tex="I_f" inline={true} /> to create rotor magnetic poles. Prime movers rotate the rotor, spinning these magnetic poles which sweep across the stator armature coils to induce an internal generated EMF phase voltage:
+                          </p>
+                          <div className="my-3 text-center">
+                            <MathEquation tex="E_{ph} = \sqrt{2}\pi f N_{ph} \Phi_p" />
+                          </div>
+                          <p className="text-slate-400 text-xs">
+                            Under load, terminal voltage decreases due to the armature winding resistance <MathEquation tex="R_a" inline={true} /> drop and synchronous reactance <MathEquation tex="X_s" inline={true} /> drop.
+                          </p>
+                        </div>
+                        <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800/80">
+                          <h4 className="font-bold text-yellow-500 mb-2 space-font uppercase tracking-wider text-xs">⚡ Power Factor Influence:</h4>
+                          <p className="text-slate-400 text-xs">
+                            For a lagging power factor load (inductive load), the armature reaction demagnetizes the rotor field, causing a significant voltage drop. For a leading power factor load (capacitive load), the armature reaction magnetizes/boosts the field, which can result in terminal voltage being higher than the open-circuit generated EMF (a negative voltage regulation).
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                </div>
+
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <footer className="w-full bg-slate-950 border-t border-slate-900 px-6 py-2.5 flex items-center justify-between text-[11px] text-slate-500 z-10 shrink-0">
+            <div>Developed in compliance with Siemens Commercial Digital Twin APIs.</div>
+            <div className="font-mono text-[10px]">VER: 5.5.0-PRO</div>
+          </footer>
+        </div>
+      );
+    }
+
+    // Component: Live Oscilloscope
+    function Oscilloscope({ frequency, voltage }) {
+      const canvasRef = useRef(null);
+
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let animId;
+        let phase = 0;
+
+        const draw = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          ctx.strokeStyle = "rgba(255,255,255,0.06)";
+          ctx.lineWidth = 1;
+          for(let i=0; i<canvas.width; i+=20) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height);
+            ctx.stroke();
+          }
+          for(let j=0; j<canvas.height; j+=20) {
+            ctx.beginPath();
+            ctx.moveTo(0, j); ctx.lineTo(canvas.width, j);
+            ctx.stroke();
+          }
+
+          const amp = Math.min(30, (voltage / 480) * 30);
+          const speed = (frequency / 50) * 0.15;
+
+          const colors = ["#f43f5e", "#fbbf24", "#3b82f6"]; // R, Y, B phases
+          for (let p = 0; p < 3; p++) {
+            ctx.strokeStyle = colors[p];
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x++) {
+              const y = canvas.height/2 + amp * Math.sin((x * 0.08) - phase + (p * Math.PI * 2 / 3));
+              if (x === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+          }
+
+          phase += speed;
+          animId = requestAnimationFrame(draw);
+        };
+        draw();
+
+        return () => cancelAnimationFrame(animId);
+      }, [frequency, voltage]);
+
+      return <canvas ref={canvasRef} width="220" height="90" className="w-full h-auto bg-slate-950 rounded border border-slate-900"></canvas>;
+    }
+
+    // Component: Calculation Substitution display card
+    function CalculationBlock({ title, formula, substitution, result }) {
+      return (
+        <div className="p-3 bg-slate-950/70 border border-slate-850 rounded-lg flex flex-col space-y-1.5 font-mono text-[11px] text-slate-350">
+          <span className="font-bold text-yellow-500 text-[10px] uppercase tracking-wider space-font">{title}</span>
+          <div className="flex flex-col text-[10px] text-slate-400">
+            <span>Formula: <MathEquation tex={formula} inline={true} /></span>
+            <span>Substitution: <MathEquation tex={substitution} inline={true} /></span>
+          </div>
+          <div className="text-right text-emerald-400 font-bold mt-1 border-t border-slate-900 pt-1">
+            Answer: {result}
+          </div>
+        </div>
+      );
+    }
+
+    // Component: AI predictions output row
+    function PredictionRow({ label, mlVal, eqVal, unit }) {
+      const difference = mlVal !== undefined && eqVal !== undefined ? ((mlVal - eqVal)/eqVal*100) : 0;
+      return (
+        <div className="flex justify-between items-center p-2 bg-slate-900/40 rounded border border-slate-800">
+          <span className="font-medium text-slate-300">{label}</span>
+          <div className="flex items-center space-x-6 font-mono">
+            <div>
+              <span className="text-[9px] text-slate-500 block text-right">PHYSICS</span>
+              <span className="text-slate-300 font-bold">{eqVal !== undefined ? eqVal.toFixed(2) : "N/A"}{unit}</span>
+            </div>
+            <div>
+              <span className="text-[9px] text-yellow-500 block text-right">AI MODEL</span>
+              <span className="text-yellow-400 font-bold">{mlVal !== undefined ? mlVal.toFixed(2) : "N/A"}{unit}</span>
+            </div>
+            <div className="w-16">
+              <span className="text-[9px] text-slate-500 block text-right">DEV. ERROR</span>
+              <span className={`font-bold block text-right ${Math.abs(difference) < 1.0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {Math.abs(difference).toFixed(2)}%
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function AccuracyRow({ label, predData }) {
+      return (
+        <tr className="border-b border-slate-850">
+          <td className="py-2 text-slate-400">{label}</td>
+          <td className="text-emerald-400 font-bold">{predData?.mlp?.r2 !== undefined ? predData.mlp.r2.toFixed(4) : "0.9850"}</td>
+          <td className="text-yellow-500 font-bold">{predData?.rf?.r2 !== undefined ? predData.rf.r2.toFixed(4) : "0.9520"}</td>
+          <td className="text-blue-400 font-bold">{predData?.poly?.r2 !== undefined ? predData.poly.r2.toFixed(4) : "0.9630"}</td>
+        </tr>
+      );
+    }
+
+    // Component: Curves selector deck
+    function CurvesDeck({ facility, r1, r2Prime, x1, x2Prime, xm, rc, pRot, voltage, frequency, currentSlip, currentPower, aIf, aIa, aPF, aSpeed, aRa, aXs, alternatorResults }) {
+      const containerRef = useRef(null);
+      const [curveType, setCurveType] = useState(facility === "motor" ? "torque-speed" : "capability-pq");
+
+      useEffect(() => {
+        setCurveType(facility === "motor" ? "torque-speed" : "capability-pq");
+      }, [facility]);
+
+      useEffect(() => {
+        if (!containerRef.current || typeof window.Plotly === "undefined") return;
+
+        if (facility === "motor") {
+          const slipArr = [];
+          const speedArr = [];
+          const torqueArr = [];
+          const pOutArr = [];
+          const effArr = [];
+          const pfArr = [];
+          const currentArr = [];
+
+          for (let s = 0.0001; s <= 0.1; s += 0.001) {
+            const Ns = (120 * frequency) / 4;
+            const speed = (1 - s) * Ns;
+            const V_ph = voltage / Math.sqrt(3);
+
+            const zm_denom = rc * rc + xm * xm;
+            const zm_re = (rc * xm * xm) / zm_denom;
+            const zm_im = (rc * rc * xm) / zm_denom;
+            const z2_re = r2Prime / s;
+            const z2_im = x2Prime;
+
+            const num_re = zm_re * z2_re - zm_im * z2_im;
+            const num_im = zm_re * z2_im + zm_im * z2_re;
+            const den_re = zm_re + z2_re;
+            const den_im = zm_im + z2_im;
+            const den_mag2 = den_re * den_re + den_im * den_im;
+
+            const zp_re = den_mag2 > 0 ? (num_re * den_re + num_im * den_im) / den_mag2 : 0;
+            const zp_im = den_mag2 > 0 ? (num_im * den_re - num_re * den_im) / den_mag2 : 0;
+
+            const zin_re = r1 + zp_re;
+            const zin_im = x1 + zp_im;
+            const zin_mag2 = zin_re * zin_re + zin_im * zin_im;
+            const zin_mag = Math.sqrt(zin_mag2);
+
+            const i1_mag = zin_mag > 0 ? V_ph / zin_mag : 0;
+            const pf = zin_mag > 0 ? zin_re / zin_mag : 1.0;
+            const p_in = 3 * V_ph * i1_mag * pf;
+
+            const i1_re = i1_mag * pf;
+            const i1_im = -i1_mag * Math.sin(Math.acos(pf));
+            const e1_re = V_ph - (i1_re * r1 - i1_im * x1);
+            const e1_im = -(i1_re * x1 + i1_im * r1);
+            const e1_mag = Math.sqrt(e1_re * e1_re + e1_im * e1_im);
+
+            const z2_mag2 = z2_re * z2_re + z2_im * z2_im;
+            const i2_prime_mag = z2_mag2 > 0 ? e1_mag / Math.sqrt(z2_mag2) : 0;
+
+            const p_ag = 3 * i2_prime_mag * i2_prime_mag * z2_re;
+            const p_conv = (1 - s) * p_ag;
+            const p_out = Math.max(0, p_conv - pRot);
+            const t_shaft = speed > 0 ? (p_out / ((2 * Math.PI * speed) / 60)) : 0;
+            const eff = p_in > 0 ? (p_out / p_in) * 100 : 0;
+
+            slipArr.push(s * 100);
+            speedArr.push(speed);
+            torqueArr.push(t_shaft);
+            pOutArr.push(p_out);
+            effArr.push(eff);
+            pfArr.push(pf);
+            currentArr.push(i1_mag);
+          }
+
+          let traceX = [], traceY = [], xLabel = "", yLabel = "", title = "", traceColor = "#fbbf24";
+          let cursorVal = 0;
+
+          if (curveType === "torque-speed") {
+            traceX = speedArr;
+            traceY = torqueArr;
+            xLabel = "Rotor Speed (RPM)";
+            yLabel = "Shaft Torque (Nm)";
+            title = "Torque vs Speed Curve";
+            traceColor = "#fbbf24";
+            cursorVal = (1 - currentSlip) * ((120 * frequency)/4);
+          } else if (curveType === "torque-slip") {
+            traceX = slipArr;
+            traceY = torqueArr;
+            xLabel = "Slip (%)";
+            yLabel = "Shaft Torque (Nm)";
+            title = "Torque vs Slip Characteristic";
+            traceColor = "#ef4444";
+            cursorVal = currentSlip * 100;
+          } else if (curveType === "eff-power") {
+            traceX = pOutArr;
+            traceY = effArr;
+            xLabel = "Output Shaft Power (W)";
+            yLabel = "Efficiency (%)";
+            title = "Efficiency vs Output Power";
+            traceColor = "#10b981";
+            cursorVal = currentPower;
+          } else if (curveType === "current-load") {
+            traceX = pOutArr;
+            traceY = currentArr;
+            xLabel = "Output Power (W)";
+            yLabel = "Line Current (A)";
+            title = "Stator Line Current vs Load";
+            traceColor = "#3b82f6";
+            cursorVal = currentPower;
+          }
+
+          const mainTrace = {
+            x: traceX,
+            y: traceY,
+            type: "scatter",
+            mode: "lines",
+            line: { color: traceColor, width: 3 },
+            name: title
+          };
+
+          const cursorLine = {
+            x: [cursorVal, cursorVal],
+            y: [0, Math.max(...traceY, 1.0)],
+            type: "scatter",
+            mode: "lines",
+            line: { color: "#ffffff", dash: "dash", width: 1.5 },
+            name: "Operating point"
+          };
+
+          const layout = {
+            paper_bgcolor: "rgba(0,0,0,0)",
+            plot_bgcolor: "rgba(10, 15, 30, 0.4)",
+            xaxis: { title: xLabel, color: "#94a3b8", gridcolor: "rgba(255,255,255,0.05)" },
+            yaxis: { title: yLabel, color: "#94a3b8", gridcolor: "rgba(255,255,255,0.05)" },
+            margin: { l: 60, r: 20, t: 20, b: 40 },
+            legend: { font: { color: "#94a3b8" } }
+          };
+
+          Plotly.newPlot(containerRef.current, [mainTrace, cursorLine], layout, { responsive: true });
+        } else {
+          // Alternator capability curves / circle diagrams P-Q plots
+          if (curveType === "capability-pq") {
+            const P_points = [];
+            const Q_stator_points = [];
+            const Q_rotor_points = [];
+            const Q_stator_lower_points = [];
+
+            // Ratings
+            const Vt_ph = alternatorResults.vt_ph;
+            const S_rated = 3.0 * Vt_ph * 5.0; 
+            const Eph_max = 240.0 * (1.3 / 1.05); 
+            const Q_offset = (3.0 * Vt_ph * Vt_ph) / aXs;
+            const R_rotor = (3.0 * Vt_ph * alternatorResults.Eph) / aXs;
+            const R_rotor_max = (3.0 * Vt_ph * Eph_max) / aXs;
+
+            const angleStep = Math.PI / 100;
+            for (let a = 0; a <= Math.PI; a += angleStep) {
+              const p_s = S_rated * Math.sin(a);
+              const q_s = S_rated * Math.cos(a);
+              P_points.push(p_s);
+              Q_stator_points.push(q_s);
+              Q_stator_lower_points.push(-q_s);
+
+              const p_r = R_rotor_max * Math.sin(a);
+              const q_r = -Q_offset + R_rotor_max * Math.cos(a);
+              Q_rotor_points.push(q_r);
+            }
+
+            const statorTrace = {
+              x: P_points,
+              y: Q_stator_points,
+              type: "scatter",
+              mode: "lines",
+              line: { color: "#3b82f6", width: 2, dash: "dot" },
+              name: "Stator Heating Limit"
+            };
+
+            const statorLowerTrace = {
+              x: P_points,
+              y: Q_stator_lower_points,
+              type: "scatter",
+              mode: "lines",
+              line: { color: "#3b82f6", width: 2, dash: "dot" },
+              showlegend: false
+            };
+
+            const rotorTrace = {
+              x: P_points,
+              y: Q_rotor_points,
+              type: "scatter",
+              mode: "lines",
+              line: { color: "#ef4444", width: 2 },
+              name: "Rotor Excitation Limit"
+            };
+
+            // Active operating point
+            const activeP = alternatorResults.p_out;
+            const activeQ = alternatorResults.q_out;
+
+            const activePtTrace = {
+              x: [activeP],
+              y: [activeQ],
+              type: "scatter",
+              mode: "markers+text",
+              marker: { color: "#fbbf24", size: 10, symbol: "circle-dot" },
+              text: ["Operating Point"],
+              textposition: "top right",
+              name: "Operating point P-Q"
+            };
+
+            const layout = {
+              paper_bgcolor: "rgba(0,0,0,0)",
+              plot_bgcolor: "rgba(10, 15, 30, 0.4)",
+              xaxis: { title: "Active Power P (W)", color: "#94a3b8", gridcolor: "rgba(255,255,255,0.05)" },
+              yaxis: { title: "Reactive Power Q (VAR)", color: "#94a3b8", gridcolor: "rgba(255,255,255,0.05)" },
+              margin: { l: 60, r: 20, t: 20, b: 40 },
+              legend: { font: { color: "#94a3b8" } }
+            };
+
+            Plotly.newPlot(containerRef.current, [statorTrace, statorLowerTrace, rotorTrace, activePtTrace], layout, { responsive: true });
+          } else {
+            // Vt vs Ia curves
+            const iaVals = Array.from({length: 30}, (_, i) => i * 0.25);
+            const Eph = 240 * (aIf / 1.05);
+
+            const getVt = (ia, pf_val) => {
+              const phi = Math.acos(Math.abs(pf_val)) * (pf_val < 0 ? -1 : 1);
+              const B = 2 * ia * (aRa * Math.cos(phi) + aXs * Math.sin(phi));
+              const C = ia**2 * (aRa**2 + aXs**2) - Eph**2;
+              const disc = B**2 - 4*C;
+              const Vt_ph = disc >= 0 ? Math.max(20.0, (-B + Math.sqrt(disc)) / 2) : 20.0;
+              return Vt_ph * Math.sqrt(3);
+            };
+
+            const vtLag = iaVals.map(ia => getVt(ia, 0.8));
+            const vtUnity = iaVals.map(ia => getVt(ia, 1.0));
+            const vtLead = iaVals.map(ia => getVt(ia, -0.8));
+            const activeIaVal = aIa;
+            const activeVtVal = alternatorResults.vt_line;
+
+            Plotly.newPlot(containerRef.current, [
+              { x: iaVals, y: vtLag, type: 'scatter', mode: 'lines', name: '0.8 Lagging PF', line: { color: '#ef4444' } },
+              { x: iaVals, y: vtUnity, type: 'scatter', mode: 'lines', name: '1.0 Unity PF', line: { color: '#10b981' } },
+              { x: iaVals, y: vtLead, type: 'scatter', mode: 'lines', name: '0.8 Leading PF', line: { color: '#00E5FF' } },
+              { x: [activeIaVal], y: [activeVtVal], type: 'scatter', mode: 'markers', marker: { color: '#ffffff', size: 8 }, name: 'Active point' }
+            ], {
+              paper_bgcolor: 'rgba(0,0,0,0)',
+              plot_bgcolor: 'rgba(10, 15, 30, 0.4)',
+              font: { color: '#F4F3EF', size: 10 },
+              xaxis: { title: 'Armature Current Ia (A)', gridcolor: 'rgba(255,255,255,0.05)', color: "#94a3b8" },
+              yaxis: { title: 'Terminal Line Voltage Vt (V)', gridcolor: 'rgba(255,255,255,0.05)', color: "#94a3b8" },
+              margin: { l: 60, r: 20, t: 20, b: 40 },
+              legend: { font: { color: '#94a3b8' } }
+            });
+          }
+        }
+
+      }, [curveType, r1, r2Prime, x1, x2Prime, xm, rc, pRot, voltage, frequency, currentSlip, currentPower, aIf, aIa, aPF, aSpeed, aRa, aXs, alternatorResults, facility]);
+
+      return (
+        <div className="space-y-3">
+          <div className="flex space-x-1.5 overflow-x-auto text-[10px]">
+            {facility === "motor" ? (
+              <>
+                <button onClick={() => setCurveType("torque-speed")} className={`px-3 py-1 rounded border font-bold uppercase transition-all ${curveType === 'torque-speed' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>Torque vs Speed</button>
+                <button onClick={() => setCurveType("torque-slip")} className={`px-3 py-1 rounded border font-bold uppercase transition-all ${curveType === 'torque-slip' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>Torque vs Slip</button>
+                <button onClick={() => setCurveType("eff-power")} className={`px-3 py-1 rounded border font-bold uppercase transition-all ${curveType === 'eff-power' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>Eff vs Output</button>
+                <button onClick={() => setCurveType("current-load")} className={`px-3 py-1 rounded border font-bold uppercase transition-all ${curveType === 'current-load' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>Current vs Load</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setCurveType("capability-pq")} className={`px-3 py-1 rounded border font-bold uppercase transition-all ${curveType === 'capability-pq' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>Capability Curve (P-Q)</button>
+                <button onClick={() => setCurveType("load-vt-ia")} className={`px-3 py-1 rounded border font-bold uppercase transition-all ${curveType === 'load-vt-ia' ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>Vt vs Ia Load Curve</button>
+              </>
+            )}
+          </div>
+          <div ref={containerRef} className="w-full min-h-[250px]"></div>
+        </div>
+      );
+    }
+
+    // Component: Alternator Interactive Phasor Diagram
+    function PhasorDiagram({ aIa, aPF, aRa, aXs, vt_ph, Eph }) {
+      const canvasRef = useRef(null);
+
+      useEffect(() => {
+        const svg = canvasRef.current;
+        if (!svg) return;
+
+        const theta = Math.acos(Math.abs(aPF)) * (aPF < 0 ? 1 : -1); 
+
+        const vScale = 0.8;
+        const iScale = 15;
+        const impedanceScale = 4.0;
+
+        const vt_x = vt_ph * vScale;
+        const vt_y = 0;
+
+        const ia_x = 5.0 * iScale * Math.cos(theta);
+        const ia_y = 5.0 * iScale * Math.sin(theta);
+
+        const ira_x = aIa * aRa * impedanceScale * Math.cos(theta);
+        const ira_y = aIa * aRa * impedanceScale * Math.sin(theta);
+
+        const ixs_x = aIa * aXs * impedanceScale * 0.45 * Math.cos(theta + Math.PI / 2);
+        const ixs_y = aIa * aXs * impedanceScale * 0.45 * Math.sin(theta + Math.PI / 2);
+
+        const ef_x = vt_x + ira_x + ixs_x;
+        const ef_y = vt_y + ira_y + ixs_y;
+
+        svg.innerHTML = `
+          <!-- grids -->
+          <line x1="20" y1="210" x2="380" y2="210" stroke="rgba(255,255,255,0.06)" stroke-width="1.5" />
+          <line x1="50" y1="20" x2="50" y2="250" stroke="rgba(255,255,255,0.06)" stroke-width="1.5" />
+          <circle cx="50" cy="210" r="4" fill="#64748b" />
+          
+          <!-- Current vector Ia -->
+          <line x1="50" y1="210" x2="${50 + ia_x}" y2="${210 - ia_y}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3" />
+          <polygon points="${50 + ia_x},${210 - ia_y} ${45 + ia_x},${215 - ia_y} ${47 + ia_x},${205 - ia_y}" fill="#94a3b8" />
+          <text x="${60 + ia_x}" y="${210 - ia_y}" fill="#cbd5e1" font-size="9" font-weight="bold" font-family="Space Grotesk">Ia</text>
+
+          <!-- Terminal Voltage Vt vector -->
+          <line x1="50" y1="210" x2="${50 + vt_x}" y2="210" stroke="#3b82f6" stroke-width="3" />
+          <polygon points="${50 + vt_x},210 ${42 + vt_x},206 ${42 + vt_x},214" fill="#3b82f6" />
+          <text x="${60 + vt_x}" y="213" fill="#3b82f6" font-size="10" font-weight="bold" font-family="Space Grotesk">Vt</text>
+
+          <!-- Ia*Ra resistive vector -->
+          <line x1="${50 + vt_x}" y1="210" x2="${50 + vt_x + ira_x}" y2="${210 - ira_y}" stroke="#eab308" stroke-width="2.5" />
+          <polygon points="${50 + vt_x + ira_x},${210 - ira_y} ${45 + vt_x + ira_x},${215 - ira_y} ${45 + vt_x + ira_x},${205 - ira_y}" fill="#eab308" />
+          <text x="${50 + vt_x + ira_x + 5}" y="${210 - ira_y - 5}" fill="#eab308" font-size="8" font-family="Space Grotesk">Ia*Ra</text>
+
+          <!-- jIa*Xs reactance vector -->
+          <line x1="${50 + vt_x + ira_x}" y1="${210 - ira_y}" x2="${50 + ef_x}" y2="${210 - ef_y}" stroke="#ef4444" stroke-width="2.5" />
+          <text x="${50 + ef_x + 5}" y="${210 - ef_y + 10}" fill="#ef4444" font-size="8" font-family="Space Grotesk">jIa*Xs</text>
+
+          <!-- Generated EMF Ef vector -->
+          <line x1="50" y1="210" x2="${50 + ef_x}" y2="${210 - ef_y}" stroke="#10b981" stroke-width="3" />
+          <polygon points="${50 + ef_x},${210 - ef_y} ${43 + ef_x},${215 - ef_y} ${47 + ef_x},${203 - ef_y}" fill="#10b981" />
+          <text x="${60 + ef_x}" y="${210 - ef_y - 5}" fill="#10b981" font-size="10" font-weight="bold" font-family="Space Grotesk">Eph</text>
+        `;
+      }, [aIa, aPF, aRa, aXs, vt_ph, Eph]);
+
+      return (
+        <svg ref={canvasRef} width="100%" height="260" viewBox="0 0 400 260" className="max-w-[400px]"></svg>
+      );
+    }
+
+    // Component: View Mode Buttons helper
+    function ViewModeBtn({ id, label, active, setActive }) {
+      return (
+        <button
+          onClick={() => setActive(id)}
+          className={`px-3 py-1 rounded text-[10px] font-bold border transition-all ${
+            active === id ? 'bg-indigo-950 border-indigo-500 text-yellow-500' : 'bg-slate-900 border-slate-800 text-slate-400'
+          }`}>
+          {label}
+        </button>
+      );
+    }
+
+    // Interactive 3D Digital Twin Viewport Component
+    function Twin3dTab({ facility, motorSpeed, altSpeed, fluxIntensity, showFlux, showRotation, showCutaway, showThermal, motorS1, motorS2, loadTorque, setLoadTorque, setHoveredPart }) {
+      const mountRef = useRef(null);
+
+      useEffect(() => {
+        if (!mountRef.current) return;
+        const container = mountRef.current;
+        const width = container.clientWidth;
+        const height = container.clientHeight || 480;
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050b14, 0.03);
+
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(4, 3, 5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(width, height);
+        renderer.shadowMap.enabled = true;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.innerHTML = "";
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 2.0;
+        controls.maxDistance = 15;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05;
+
+        // Bright industrial room lighting
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // Spotlights
+        const spot1 = new THREE.SpotLight(0x3b82f6, 4, 25);
+        spot1.position.set(-6, 8, -6);
+        scene.add(spot1);
+
+        // Grid floor
+        const gridHelper = new THREE.GridHelper(50, 50, 0x4f46e5, 0x1e1b4b);
+        gridHelper.position.y = -0.01;
+        scene.add(gridHelper);
+
+        // Bench Table
+        const benchTable = new THREE.Mesh(
+          new THREE.BoxGeometry(4.5, 0.6, 6.0),
+          new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.1 })
+        );
+        benchTable.position.set(0, -0.3, 0.5);
+        scene.add(benchTable);
+
+        // Dust particles
+        const particleCount = 60;
+        const pGeom = new THREE.BufferGeometry();
+        const pPositions = new Float32Array(particleCount * 3);
+        for(let i=0; i<particleCount*3; i+=3) {
+          pPositions[i] = (Math.random() - 0.5) * 15;
+          pPositions[i+1] = Math.random() * 5;
+          pPositions[i+2] = (Math.random() - 0.5) * 15;
+        }
+        pGeom.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+        const pMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.04, transparent: true, opacity: 0.4 });
+        const dust = new THREE.Points(pGeom, pMat);
+        scene.add(dust);
+
+        // Build machine core
+        const machineGroup = new THREE.Group();
+        machineGroup.position.set(0, 0.3, 0);
+        scene.add(machineGroup);
+
+        const statorMat = new THREE.MeshStandardMaterial({
+          color: showThermal ? 0xef4444 : (facility === "motor" ? 0x3b82f6 : 0xf59e0b),
+          roughness: 0.1,
+          metalness: 0.9,
+          transparent: showCutaway,
+          opacity: showCutaway ? 0.2 : 1.0
+        });
+
+        // 1. Bedplate Base
+        const bedplate = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.12, 3.2), new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 }));
+        bedplate.position.y = 0.06;
+        bedplate.userData = { name: "Bedplate Mounting Base" };
+        machineGroup.add(bedplate);
+
+        // 2. Main casing frame cylinder
+        const casing = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 2.0, 32), statorMat);
+        casing.rotation.x = Math.PI / 2;
+        casing.position.y = 1.1;
+        casing.userData = { name: facility === "motor" ? "Induction Motor Stator Casing" : "Alternator Stator Armature Shell" };
+        machineGroup.add(casing);
+
+        // 3. Stator Winding slots coils
+        const windingsGroup = new THREE.Group();
+        windingsGroup.position.y = 1.1;
+        const numCoils = 16;
+        for (let i = 0; i < numCoils; i++) {
+          const angle = (i / numCoils) * Math.PI * 2;
+          const coil = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.06, 1.8, 8),
+            new THREE.MeshStandardMaterial({
+              color: 0xd97706,
+              emissive: 0xd97706,
+              emissiveIntensity: 0.45,
+              metalness: 0.9,
+              transparent: showCutaway ? false : true,
+              opacity: showCutaway ? 1.0 : 0.15
+            })
+          );
+          coil.position.set(Math.cos(angle) * 0.85, Math.sin(angle) * 0.85, 0);
+          coil.rotation.x = Math.PI / 2;
+          windingsGroup.add(coil);
+        }
+        windingsGroup.userData = { name: facility === "motor" ? "Stator 3-Phase Copper Windings" : "Armature 3-Phase Phase Windings" };
+        machineGroup.add(windingsGroup);
+
+        // 4. Stator Cooling Fins (Motor only)
+        const finsGroup = new THREE.Group();
+        if (facility === "motor") {
+          for (let i = 0; i < 9; i++) {
+            const fin = new THREE.Mesh(new THREE.CylinderGeometry(1.08, 1.08, 0.05, 32), statorMat);
+            fin.position.set(0, 1.1, -0.7 + i * 0.18);
+            fin.rotation.x = Math.PI / 2;
+            fin.userData = { name: "Cooling Fins" };
+            finsGroup.add(fin);
+          }
+          machineGroup.add(finsGroup);
+        }
+
+        // 5. Terminal Box
+        const tBox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 }));
+        tBox.position.set(0, 2.2, 0);
+        tBox.userData = { name: "Terminal Box & Grid Inlet" };
+        machineGroup.add(tBox);
+
+        // 6. Non-Drive End Cover Cowl
+        const fanCowl = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.98, 0.98, 0.4, 32),
+          new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.7, transparent: showCutaway, opacity: showCutaway ? 0.15 : 1.0 })
+        );
+        fanCowl.rotation.x = Math.PI / 2;
+        fanCowl.position.set(0, 1.1, -1.2);
+        fanCowl.userData = { name: "Non-Drive Cooling Fan Cowl" };
+        machineGroup.add(fanCowl);
+
+        const fanBlades = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.15, 16), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+        fanBlades.rotation.x = Math.PI / 2;
+        fanBlades.position.set(0, 1.1, -1.1);
+        fanBlades.userData = { name: "Internal Cooling Fan Blades" };
+        machineGroup.add(fanBlades);
+
+        // 7. Rotor Shaft
+        const shaft = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.16, 0.16, 3.4, 32),
+          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95 })
+        );
+        shaft.rotation.x = Math.PI / 2;
+        shaft.position.y = 1.1;
+        shaft.userData = { name: "Steel Rotating Drive Shaft" };
+        machineGroup.add(shaft);
+
+        // 8. Rotating Rotor Core Assembly
+        const rotorCoreGroup = new THREE.Group();
+        rotorCoreGroup.position.y = 1.1;
+        machineGroup.add(rotorCoreGroup);
+
+        if (facility === "motor") {
+          const rotorCore = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.72, 0.72, 1.4, 32),
+            new THREE.MeshStandardMaterial({
+              color: 0x4b5563,
+              metalness: 0.85,
+              transparent: showCutaway,
+              opacity: showCutaway ? 0.2 : 1.0
+            })
+          );
+          rotorCore.rotation.x = Math.PI / 2;
+          rotorCore.userData = { name: "Laminated Iron Rotor Core" };
+          rotorCoreGroup.add(rotorCore);
+
+          for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const bar = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.035, 0.035, 1.45, 8),
+              new THREE.MeshStandardMaterial({
+                color: 0xf59e0b,
+                metalness: 0.9,
+                transparent: showCutaway,
+                opacity: showCutaway ? 0.2 : 1.0
+              })
+            );
+            bar.position.set(Math.cos(angle) * 0.65, Math.sin(angle) * 0.65, 0);
+            bar.rotation.x = Math.PI / 2;
+            bar.userData = { name: `Squirrel Cage Rotor Bar ${i+1}` };
+            rotorCoreGroup.add(bar);
+          }
+        } else {
+          // Salient-Pole Synchronous Alternator Rotor Core
+          const rotorCoreBase = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.4, 16), new THREE.MeshStandardMaterial({ color: 0x4b5563, metalness: 0.85 }));
+          rotorCoreBase.rotation.x = Math.PI / 2;
+          rotorCoreBase.userData = { name: "Salient Pole Rotor Core Shaft Mount" };
+          rotorCoreGroup.add(rotorCoreBase);
+
+          // 4 salient projecting poles wrapped in copper coils
+          const poleGeom = new THREE.BoxGeometry(0.25, 0.45, 1.35);
+          const coilGeom = new THREE.BoxGeometry(0.35, 0.12, 1.38);
+          const coilMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.9, roughness: 0.2 });
+
+          for(let i=0; i<4; i++) {
+            const poleHolder = new THREE.Group();
+            const angle = (i / 4) * Math.PI * 2;
+            poleHolder.rotation.z = angle;
+            
+            const pole = new THREE.Mesh(poleGeom, new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8 }));
+            pole.position.y = 0.5;
+            pole.userData = { name: `Salient Pole magnetizer ${i+1}` };
+            poleHolder.add(pole);
+
+            const coil = new THREE.Mesh(coilGeom, coilMat);
+            coil.position.y = 0.45;
+            coil.userData = { name: `Excitation Coil Winding ${i+1}` };
+            poleHolder.add(coil);
+
+            rotorCoreGroup.add(poleHolder);
+          }
+
+          // Slip Rings assembly
+          const ringGroup = new THREE.Group();
+          ringGroup.position.z = -0.9;
+          
+          const ring1 = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0xb45309, metalness: 0.9 }));
+          ring1.rotation.x = Math.PI / 2;
+          ring1.position.z = -0.15;
+          ring1.userData = { name: "Excitation Slip Ring 1" };
+          
+          const ring2 = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0xb45309, metalness: 0.9 }));
+          ring2.rotation.x = Math.PI / 2;
+          ring2.position.z = 0.15;
+          ring2.userData = { name: "Excitation Slip Ring 2" };
+
+          ringGroup.add(ring1, ring2);
+          rotorCoreGroup.add(ringGroup);
+
+          // Stationary carbon contacts
+          const brush1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.12), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 }));
+          brush1.position.set(0, 1.1 + 0.3, -0.95);
+          brush1.userData = { name: "Stationary Carbon Brush Contacts" };
+          machineGroup.add(brush1);
+        }
+
+        // Bearing flanges
+        const bearingF = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.1, 8, 24), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+        bearingF.position.set(0, 1.1, 1.02);
+        bearingF.userData = { name: "Drive-End Ball Bearing Flange" };
+        machineGroup.add(bearingF);
+
+        // Friction scale markers & Load indicators for Motor
+        const loadGroup = new THREE.Group();
+        loadGroup.position.set(0, 1.1, 1.8);
+        machineGroup.add(loadGroup);
+
+        // Spring balances scales references
+        let scalePointer1, scalePointer2;
+
+        if (facility === "motor") {
+          const drum = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.55, 0.55, 0.35, 32),
+            new THREE.MeshStandardMaterial({ color: 0x7c2d12, metalness: 0.8, roughness: 0.1 })
+          );
+          drum.rotation.x = Math.PI / 2;
+          drum.userData = { name: "Mechanical Friction Brake Drum" };
+          loadGroup.add(drum);
+
+          const belt = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.58, 0.58, 0.1, 32, 1, true),
+            new THREE.MeshBasicMaterial({ color: 0x0f172a, side: THREE.DoubleSide })
+          );
+          belt.rotation.x = Math.PI / 2;
+          loadGroup.add(belt);
+
+          // Spring Balance Left Framework
+          const frameL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.04), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+          frameL.position.set(-0.7, 0.6, 0);
+          frameL.userData = { name: "Spring Balance 1 (Tension S1)" };
+          loadGroup.add(frameL);
+
+          scalePointer1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.06), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+          scalePointer1.position.set(-0.7, 0.6, 0.02);
+          loadGroup.add(scalePointer1);
+
+          // Spring Balance Right Framework
+          const frameR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.04), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+          frameR.position.set(0.7, 0.6, 0);
+          frameR.userData = { name: "Spring Balance 2 (Tension S2)" };
+          loadGroup.add(frameR);
+
+          scalePointer2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.06), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+          scalePointer2.position.set(0.7, 0.6, 0.02);
+          loadGroup.add(scalePointer2);
+
+          // Clickable tensioning load adjustment handwheel
+          const adjustWheel = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.2, 0.08, 16),
+            new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.9 })
+          );
+          adjustWheel.position.set(0, 1.1, 0.3);
+          adjustWheel.rotation.x = Math.PI / 2;
+          adjustWheel.userData = { name: "Click to Rotate Tension Adjuster Knob" };
+          loadGroup.add(adjustWheel);
+
+          // Transparent click spheres for +/- in 3D
+          const plusBtn = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.6 }));
+          plusBtn.position.set(0.35, 1.25, 0.3);
+          plusBtn.userData = { name: "Click to increase load torque (+)" };
+          loadGroup.add(plusBtn);
+
+          const minusBtn = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.6 }));
+          minusBtn.position.set(-0.35, 1.25, 0.3);
+          minusBtn.userData = { name: "Click to decrease load torque (-)" };
+          loadGroup.add(minusBtn);
+
+        } else {
+          // Coupling prime mover
+          const coupling = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.5, 32), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9 }));
+          coupling.rotation.x = Math.PI / 2;
+          coupling.userData = { name: "Prime Mover coupling flange" };
+          loadGroup.add(coupling);
+        }
+
+        // Live holographic display canvas above the machine base in 3D workspace
+        const holoCanvas = document.createElement("canvas");
+        holoCanvas.width = 256;
+        holoCanvas.height = 64;
+        const holoCtx = holoCanvas.getContext("2d");
+        const holoTex = new THREE.CanvasTexture(holoCanvas);
+        const holoSpriteMat = new THREE.SpriteMaterial({ map: holoTex, transparent: true });
+        const holoSprite = new THREE.Sprite(holoSpriteMat);
+        holoSprite.scale.set(1.6, 0.4, 1.0);
+        holoSprite.position.set(0, 1.8, 1.8);
+        machineGroup.add(holoSprite);
+
+        // Tachometer
+        const speedSensor = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), new THREE.MeshBasicMaterial({ color: 0x10b981 }));
+        speedSensor.position.set(0, 1.35, 1.15);
+        speedSensor.userData = { name: "Tachometer Rotation Speed Sensor" };
+        machineGroup.add(speedSensor);
+
+        // Stator RMF flux loop rings
+        const rmfGroup = new THREE.Group();
+        if (showFlux) {
+          scene.add(rmfGroup);
+          for (let i = 0; i < 4; i++) {
+            const fluxRing = new THREE.Mesh(
+              new THREE.TorusGeometry(0.88 + i * 0.05, 0.012, 8, 48),
+              new THREE.MeshBasicMaterial({ color: facility === "motor" ? 0x6366f1 : 0xf59e0b, transparent: true, opacity: 0.4 })
+            );
+            fluxRing.position.set(0, 1.4, -0.4 + i * 0.4);
+            rmfGroup.add(fluxRing);
+          }
+        }
+
+        // Raycasting for interactive clicks & hover
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        const onMouseMove = (e) => {
+          const rect = renderer.domElement.getBoundingClientRect();
+          mouse.x = ((e.clientX - rect.left) / width) * 2 - 1;
+          mouse.y = -((e.clientY - rect.top) / height) * 2 + 1;
+        };
+        window.addEventListener("mousemove", onMouseMove);
+
+        const onCanvasClick = (e) => {
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObjects(loadGroup.children, true);
+          if (intersects.length > 0) {
+            const hit = intersects[0].object;
+            if (hit.userData.name && hit.userData.name.includes("+")) {
+              setLoadTorque(prev => Math.min(30, prev + 1.0));
+            } else if (hit.userData.name && hit.userData.name.includes("-")) {
+              setLoadTorque(prev => Math.max(0, prev - 1.0));
+            }
+          }
+        };
+        renderer.domElement.addEventListener("click", onCanvasClick);
+
+        let animationId;
+        const clock = new THREE.Clock();
+
+        const animate = () => {
+          animationId = requestAnimationFrame(animate);
+          const time = clock.getElapsedTime();
+          const delta = clock.getDelta();
+          const activeSpeed = facility === "motor" ? motorSpeed : altSpeed;
+          const speedFactor = activeSpeed / 1500;
+
+          // Rotation updates
+          if (showRotation) {
+            shaft.rotation.y += delta * 20 * speedFactor;
+            rotorCoreGroup.rotation.y += delta * 20 * speedFactor;
+            fanBlades.rotation.y += delta * 20 * speedFactor;
+            
+            if (facility === "motor") {
+              const drumMesh = loadGroup.children[0];
+              if (drumMesh) drumMesh.rotation.y += delta * 20 * speedFactor;
+            } else {
+              const couplingMesh = loadGroup.children[0];
+              if (couplingMesh) couplingMesh.rotation.y += delta * 20 * speedFactor;
+            }
+          }
+
+          // Rotating magnetic field animation
+          if (showFlux) {
+            rmfGroup.rotation.z += delta * fluxIntensity * 15;
+          }
+
+          // Move spring scale indicators dynamically
+          if (facility === "motor" && scalePointer1 && scalePointer2) {
+            // S1 pointer position (offset from center)
+            scalePointer1.position.y = 0.6 - (motorS1 * 0.012);
+            // S2 pointer position
+            scalePointer2.position.y = 0.6 - (motorS2 * 0.012);
+          }
+
+          // Update dynamic 3D holographic digital readout canvas
+          holoCtx.clearRect(0, 0, 256, 64);
+          holoCtx.fillStyle = "rgba(10, 25, 47, 0.8)";
+          holoCtx.fillRect(0, 0, 256, 64);
+          holoCtx.strokeStyle = "#eab308";
+          holoCtx.lineWidth = 2;
+          holoCtx.strokeRect(2, 2, 252, 60);
+
+          holoCtx.fillStyle = "#eab308";
+          holoCtx.font = "bold 13px 'Space Grotesk', sans-serif";
+          holoCtx.textAlign = "center";
+          if (facility === "motor") {
+            holoCtx.fillText(`LOAD TORQUE: ${loadTorque.toFixed(1)} Nm`, 128, 25);
+            holoCtx.fillText(`S1: ${motorS1.toFixed(1)} kg | S2: ${motorS2.toFixed(1)} kg`, 128, 48);
+          } else {
+            holoCtx.fillText(`ROT. SPEED: ${altSpeed.toFixed(0)} RPM`, 128, 25);
+            holoCtx.fillText(`FIELD EXC. If: ${fluxIntensity.toFixed(2)} A`, 128, 48);
+          }
+          holoTex.needsUpdate = true;
+
+          // Raycast hover labels
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObjects(machineGroup.children, true);
+          if (intersects.length > 0) {
+            const hit = intersects[0].object;
+            const parent = hit.parent;
+            const label = hit.userData.name || parent?.userData?.name || "Assembled Machine Core";
+            setHoveredPart(label);
+          } else {
+            setHoveredPart("No Component Selected");
+          }
+
+          // Wiggle dust
+          const posArr = pGeom.attributes.position.array;
+          for (let i = 1; i < posArr.length; i += 3) {
+            posArr[i] -= 0.004;
+            if (posArr[i] < 0) posArr[i] = 5;
+          }
+          pGeom.attributes.position.needsUpdate = true;
+
+          controls.update();
+          renderer.render(scene, camera);
+        };
+        animate();
+
+        const handleResize = () => {
+          if (!mountRef.current) return;
+          const w = mountRef.current.clientWidth;
+          const h = mountRef.current.clientHeight || 480;
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+          renderer.setSize(w, h);
+        };
+        window.addEventListener("resize", handleResize);
+
+        return () => {
+          cancelAnimationFrame(animationId);
+          window.removeEventListener("mousemove", onMouseMove);
+          renderer.domElement.removeEventListener("click", onCanvasClick);
+          window.removeEventListener("resize", handleResize);
+          if (container) container.innerHTML = "";
+        };
+      }, [facility, motorSpeed, altSpeed, fluxIntensity, showFlux, showRotation, showCutaway, showThermal, motorS1, motorS2, loadTorque]);
+
+      return (
+        <div className="w-full h-full relative select-none">
+          <div ref={mountRef} className="w-full h-full"></div>
+        </div>
+      );
+    }
+
+    function HeroSection({ setView, setActiveFacility, selectedDataset, setSelectedDataset, motorSpeed, altSpeed }) {
+      const mountRef = useRef(null);
+      const [hoveredLabel, setHoveredLabel] = useState(null);
+      const [selectedBay, setSelectedBay] = useState(null);
+      const [showInfoModal, setShowInfoModal] = useState(false);
+
+      const selectedBayRef = useRef(null);
+      useEffect(() => {
+        selectedBayRef.current = selectedBay;
+      }, [selectedBay]);
+
+      useEffect(() => {
+        if (!mountRef.current) return;
+        const container = mountRef.current;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0a1424, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(0, 8, 15);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.1;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05;
+
+        // Lights
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        dirLight.position.set(15, 25, 20);
+        scene.add(dirLight);
+
+        // Floor Grid
+        const gridHelper = new THREE.GridHelper(120, 120, 0x4f46e5, 0x1e1b4b);
+        gridHelper.position.y = -0.01;
+        scene.add(gridHelper);
+
+        const createHoloBase = (x, z, r, colorHex) => {
+          const geom = new THREE.RingGeometry(r - 0.15, r, 64);
+          const mat = new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.DoubleSide, transparent: true, opacity: 0.95 });
+          const mesh = new THREE.Mesh(geom, mat);
+          mesh.rotation.x = Math.PI / 2;
+          mesh.position.set(x, 0.02, z);
+          scene.add(mesh);
+          return mesh;
+        };
+
+        const motorBase = createHoloBase(-6, 0, 3.0, 0xf59e0b);
+        const genBase = createHoloBase(6, 0, 3.0, 0x0ea5e9);
+
+        // Induction Motor Model (Left)
+        const motorGroup = new THREE.Group();
+        motorGroup.position.set(-6, 0, 0);
+        scene.add(motorGroup);
+        const motorFrame = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 2.0, 32), new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.95 }));
+        motorFrame.rotation.x = Math.PI / 2;
+        motorFrame.position.y = 1.0;
+        motorGroup.add(motorFrame);
+        const motorShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 2.8, 16), new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95 }));
+        motorShaft.rotation.x = Math.PI / 2;
+        motorShaft.position.y = 1.0;
+        motorGroup.add(motorShaft);
+
+        // Alternator Model (Right)
+        const genGroup = new THREE.Group();
+        genGroup.position.set(6, 0, 0);
+        scene.add(genGroup);
+        const genFrame = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 2.0, 32), new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9 }));
+        genFrame.rotation.x = Math.PI / 2;
+        genFrame.position.y = 1.0;
+        genGroup.add(genFrame);
+        const genShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 2.8, 16), new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95 }));
+        genShaft.rotation.x = Math.PI / 2;
+        genShaft.position.y = 1.0;
+        genGroup.add(genShaft);
+
+        // Create canvas floating names with makes
+        const createFloatingLabelCanvas = (title, subtitle) => {
+          const canvas = document.createElement("canvas");
+          canvas.width = 512;
+          canvas.height = 128;
+          const ctx = canvas.getContext("2d");
+          
+          ctx.fillStyle = "rgba(10, 20, 42, 0.85)";
+          ctx.strokeStyle = "#eab308";
+          ctx.lineWidth = 4;
+          
+          const x = 10, y = 10, w = 492, h = 108, r = 16;
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.arcTo(x + w, y, x + w, y + h, r);
+          ctx.arcTo(x + w, y + h, x, y + h, r);
+          ctx.arcTo(x, y + h, x, y, r);
+          ctx.arcTo(x, y, x + w, y, r);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 26px 'Space Grotesk', sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(title, 256, 48);
+          
+          ctx.fillStyle = "#94a3b8";
+          ctx.font = "italic 17px 'Outfit', sans-serif";
+          ctx.fillText(subtitle, 256, 82);
+          
+          return canvas;
+        };
+
+        const motorLabelCanvas = createFloatingLabelCanvas("3φ INDUCTION MOTOR", "Kirloskar Electric // KE-IM2.2 // 3 HP");
+        const motorTex = new THREE.CanvasTexture(motorLabelCanvas);
+        const motorSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: motorTex, transparent: true }));
+        motorSprite.scale.set(4.0, 1.0, 1.0);
+        motorSprite.position.set(0, 2.5, 0);
+        motorGroup.add(motorSprite);
+
+        const genLabelCanvas = createFloatingLabelCanvas("SYNCHRONOUS ALTERNATOR", "Crompton Greaves // CG-SA3.5 // 3.5 kVA");
+        const genTex = new THREE.CanvasTexture(genLabelCanvas);
+        const genSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: genTex, transparent: true }));
+        genSprite.scale.set(4.0, 1.0, 1.0);
+        genSprite.position.set(0, 2.5, 0);
+        genGroup.add(genSprite);
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        const onMouseMove = (event) => {
+          const rect = renderer.domElement.getBoundingClientRect();
+          mouse.x = ((event.clientX - rect.left) / width) * 2 - 1;
+          mouse.y = -((event.clientY - rect.top) / height) * 2 + 1;
+        };
+        window.addEventListener('mousemove', onMouseMove);
+
+        let animeId;
+        const clock = new THREE.Clock();
+
+        const animate = () => {
+          animeId = requestAnimationFrame(animate);
+          const time = clock.getElapsedTime();
+          
+          motorShaft.rotation.y = time * (motorSpeed / 100);
+          genShaft.rotation.y = time * (altSpeed / 100);
+
+          const currentBay = selectedBayRef.current;
+          if (currentBay === "motor") {
+            motorGroup.rotation.y += 0.006;
+          } else {
+            motorGroup.rotation.y = THREE.MathUtils.lerp(motorGroup.rotation.y, 0, 0.05);
+          }
+
+          if (currentBay === "alternator") {
+            genGroup.rotation.y += 0.006;
+          } else {
+            genGroup.rotation.y = THREE.MathUtils.lerp(genGroup.rotation.y, 0, 0.05);
+          }
+          
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObjects([motorFrame, genFrame]);
+
+          if (intersects.length > 0) {
+            const hit = intersects[0].object;
+            if (hit === motorFrame) {
+              setHoveredLabel("⚡ DOUBLE CLICK TO ZOOM MOTOR DECK");
+              document.body.style.cursor = 'pointer';
+            } else if (hit === genFrame) {
+              setHoveredLabel("⚡ DOUBLE CLICK TO ZOOM ALTERNATOR");
+              document.body.style.cursor = 'pointer';
+            }
+          } else {
+            setHoveredLabel(null);
+            document.body.style.cursor = 'default';
+          }
+
+          motorBase.scale.setScalar(1 + 0.08 * Math.sin(time * 4));
+          genBase.scale.setScalar(1 + 0.06 * Math.sin(time * 3));
+
+          controls.update();
+          renderer.render(scene, camera);
+        };
+        animate();
+
+        // Dual Click Zoom transition
+        const onDblClick = () => {
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObjects([motorFrame, genFrame]);
+          if (intersects.length > 0) {
+            const hit = intersects[0].object;
+            let targetPos = new THREE.Vector3();
+            let facilityId = "motor";
+            if (hit === motorFrame) {
+              targetPos.set(-6, 2.0, 3.2);
+              facilityId = "motor";
+            } else if (hit === genFrame) {
+              targetPos.set(6, 2.0, 3.2);
+              facilityId = "alternator";
+            }
+
+            setSelectedBay(facilityId);
+
+            gsap.to(camera.position, {
+              x: targetPos.x,
+              y: targetPos.y,
+              z: targetPos.z,
+              duration: 1.0,
+              ease: 'power3.out',
+              onUpdate: () => controls.update()
+            });
+
+            gsap.to(controls.target, {
+              x: targetPos.x,
+              y: 1.0,
+              z: 0.0,
+              duration: 1.0,
+              ease: 'power3.out'
+            });
+          }
+        };
+        window.addEventListener('dblclick', onDblClick);
+
+        return () => {
+          cancelAnimationFrame(animeId);
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('dblclick', onDblClick);
+          if (container) container.innerHTML = "";
+        };
+      }, [motorSpeed, altSpeed]);
+
+      // Hyper-Zoom launch animation transition handler
+      const launchLabWithAnimation = (facilityId) => {
+        const overlay = document.getElementById("transition-overlay");
+        if (overlay) {
+          overlay.classList.remove("pointer-events-none");
+          overlay.style.opacity = "1";
+        }
+
+        setTimeout(() => {
+          setActiveFacility(facilityId);
+          setView("dashboard");
+        }, 800);
+      };
+
+      return (
+        <div className="w-full h-full relative bg-slate-950">
+          {/* Main Map Directory */}
+          <div className="hologram-directory p-5 text-slate-200 w-72 pointer-events-auto">
+            <h3 className="space-font font-bold text-sm tracking-wider text-yellow-500 uppercase border-b border-indigo-900 pb-2 mb-3">
+              ⚡ Digital Twin Hub
+            </h3>
+            <ul className="space-y-2.5 text-xs">
+              <li onClick={() => { setActiveFacility("motor"); setView("dashboard"); }} className="cursor-pointer text-yellow-500 hover:text-yellow-400 flex items-center justify-between p-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800 rounded-lg transition-all">
+                <span>🔄 Kirloskar Induction Motor</span>
+                <i className="fa-solid fa-arrow-right text-[10px]"></i>
+              </li>
+              <li onClick={() => { setActiveFacility("alternator"); setView("dashboard"); }} className="cursor-pointer text-orange-400 hover:text-yellow-400 flex items-center justify-between p-2.5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800 rounded-lg transition-all">
+                <span>⚡ Crompton Sync Alternator</span>
+                <i className="fa-solid fa-arrow-right text-[10px]"></i>
+              </li>
+            </ul>
+          </div>
+
+          <div ref={mountRef} className="w-full h-full"></div>
+
+          {hoveredLabel && (
+            <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none bg-slate-950/90 border border-yellow-500 text-yellow-400 px-4 py-2.5 rounded-lg font-bold text-xs space-font tracking-widest uppercase glow-gold">
+              {hoveredLabel}
+            </div>
+          )}
+
+          {/* Specifications modal popup */}
+          {showInfoModal && selectedBay && (
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-40 flex items-center justify-center p-6 pointer-events-auto">
+              <div className="w-full max-w-md glass-card p-6 border border-indigo-500 space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                  <h3 className="space-font font-bold text-sm text-yellow-500 uppercase tracking-widest">
+                    ⚡ {selectedBay.toUpperCase()} TECHNICAL DATASHEET
+                  </h3>
+                  <button onClick={() => setShowInfoModal(false)} className="text-slate-400 hover:text-slate-200">
+                    <i className="fa-solid fa-times"></i>
+                  </button>
+                </div>
+                
+                {selectedBay === "motor" ? (
+                  <div className="text-xs text-slate-350 space-y-2">
+                    <p><strong className="text-indigo-400">Class:</strong> 3-Phase Cage Induction Motor (Kirloskar KE-IM2.2)</p>
+                    <p><strong className="text-indigo-400">Ratings:</strong> 2.2 kW (3 HP) // 415 V Delta // 4.6 A // 50 Hz</p>
+                    <p><strong className="text-indigo-400">Mechanical Structure:</strong> Steel housing cowl cooling fins, squirrel cage rotor cage core, friction balance drum.</p>
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-350 space-y-2">
+                    <p><strong className="text-indigo-400">Class:</strong> Brushless Synchronous Generator (Crompton CG-SA3.5)</p>
+                    <p><strong className="text-indigo-400">Ratings:</strong> 3.5 kVA // 415 V Star // 5.0 A // 1500 RPM</p>
+                    <p><strong className="text-indigo-400">Excitation:</strong> 110 V DC rotor field slip rings and carbon brush contacts.</p>
+                  </div>
+                )}
+
+                <div className="pt-2 flex justify-end">
+                  <button 
+                    onClick={() => setShowInfoModal(false)} 
+                    className="px-4 py-2 bg-slate-900 border border-slate-700 hover:border-slate-500 rounded font-semibold text-xs text-slate-255 transition-all">
+                    Close Specs
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Console Popup for highlighted machine */}
+          {selectedBay && (
+            <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-slate-900/95 border-2 border-yellow-500 p-5 rounded-xl text-center shadow-2xl z-35 flex flex-col items-center space-y-3 min-w-[280px] pointer-events-auto">
+              <h4 className="space-font font-bold text-sm text-yellow-400 uppercase tracking-widest">
+                {selectedBay.toUpperCase()} BAY IDENTIFIED
+              </h4>
+              
+              <div className="flex space-x-2 w-full">
+                <button 
+                  onClick={() => setShowInfoModal(true)} 
+                  className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 hover:border-yellow-500 text-slate-300 rounded font-bold uppercase transition-all text-[10px]">
+                  <i className="fa-solid fa-circle-info mr-1"></i> Specifications
+                </button>
+                <button 
+                  onClick={() => launchLabWithAnimation(selectedBay)} 
+                  className="flex-1 px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-slate-950 rounded font-black transition-all uppercase glow-gold text-[10px]">
+                  Launch Lab Panel
+                </button>
+              </div>
+
+              <button 
+                onClick={() => setSelectedBay(null)} 
+                className="text-[10px] text-slate-400 hover:text-slate-200 underline">
+                Reset camera view
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+
+  </script>
+</body>
+</html>
