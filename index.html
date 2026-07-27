@@ -445,7 +445,7 @@
 
       useEffect(() => {
         // Fetch MongoDB connection status on mount
-        fetch('/api/get_observations')
+        fetch('/api/test_db')
           .then(res => res.json())
           .then(data => {
             if (data.error) setDbStatus("offline");
@@ -754,14 +754,12 @@
 
       // Trigger transition screens
       useEffect(() => {
-        if (view === "dashboard") {
-          const overlay = document.getElementById("transition-overlay");
-          if (overlay) {
-            setTimeout(() => {
-              overlay.style.opacity = "0";
-              overlay.classList.add("pointer-events-none");
-            }, 100);
-          }
+        const overlay = document.getElementById("transition-overlay");
+        if (overlay) {
+          setTimeout(() => {
+            overlay.style.opacity = "0";
+            overlay.classList.add("pointer-events-none");
+          }, 100);
         }
       }, [view]);
 
@@ -993,7 +991,7 @@
                 <div className="relative w-full h-[550px] shrink-0 border-b border-slate-900 bg-slate-950 flex flex-col md:flex-row items-center justify-center">
                   
                   {/* Floating Overlay Left: Console Controls */}
-                  <div className="absolute left-6 top-6 z-25 w-80 bg-slate-950/80 backdrop-blur-xl border border-indigo-500/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl p-5 space-y-4 max-h-[500px] overflow-y-auto select-none pointer-events-auto">
+                  <div className="absolute left-6 top-6 z-25 w-72 bg-slate-950/80 backdrop-blur-xl border border-indigo-500/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl p-3 space-y-3 max-h-[500px] overflow-y-auto select-none pointer-events-auto">
                     <div className="flex justify-between items-center border-b border-indigo-500/30 pb-3 mb-2">
                       <h3 className="space-font font-bold text-xs text-yellow-500 uppercase tracking-widest drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">
                         <i className="fa-solid fa-sliders mr-2"></i> Control Desk
@@ -1071,7 +1069,7 @@
                   </div>
 
                   {/* Floating Overlay Right: Live circular telemetry */}
-                  <div className="absolute right-6 top-6 z-25 w-80 max-h-[500px] select-none pointer-events-auto">
+                  <div className="absolute right-6 top-6 z-25 w-72 max-h-[500px] select-none pointer-events-auto">
                     
                     <div className="bg-slate-950/80 backdrop-blur-xl border border-indigo-500/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl flex flex-col overflow-hidden">
                       {/* Tabs Header */}
@@ -3231,10 +3229,13 @@
           animeId = requestAnimationFrame(animate);
           const time = clock.getElapsedTime();
           
-          motorParts.shaft.rotation.y = time * (motorSpeedRef.current / 100);
-          motorParts.rotor.rotation.y = time * (motorSpeedRef.current / 100);
-          genParts.shaft.rotation.y = time * (altSpeedRef.current / 100);
-          genParts.rotor.rotation.y = time * (altSpeedRef.current / 100);
+          const mSpeed = motorSpeedRef.current > 0 ? motorSpeedRef.current / 100 : 5.0;
+          const aSpeed = altSpeedRef.current > 0 ? altSpeedRef.current / 100 : 5.0;
+          
+          motorParts.shaft.rotation.y = time * mSpeed;
+          motorParts.rotor.rotation.y = time * mSpeed;
+          genParts.shaft.rotation.y = time * aSpeed;
+          genParts.rotor.rotation.y = time * aSpeed;
 
           // Animate Flux
           motorParts.fluxGroup.rotation.z = time * 3;
