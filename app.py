@@ -31,8 +31,9 @@ try:
     if users_collection.count_documents({"username": "student"}) == 0:
         users_collection.insert_one({"username": "student", "password": "password", "role": "student"})
         
-except ImportError:
-    MongoClient = None
+except Exception as e:
+    print("MongoDB Init Error:", e)
+    mongo_client = None
     observations_collection = None
     users_collection = None
     improvements_collection = None
@@ -497,6 +498,17 @@ def login():
         return jsonify({"status": "success", "role": user["role"], "username": user["username"]}), 200
     else:
         return jsonify({"error": "Invalid credentials"}), 401
+
+@app.route("/api/test_db", methods=["GET"])
+def test_db():
+    try:
+        if mongo_client:
+            mongo_client.admin.command('ping')
+            return jsonify({"status": "success", "message": "online"}), 200
+        else:
+            return jsonify({"error": "mongo_client not initialized"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/ai/improve", methods=["POST"])
 def ai_improve():
