@@ -408,6 +408,7 @@
       ]);
 
       const [selectedMLModel, setSelectedMLModel] = useState("mlp"); // mlp, rf, poly
+      const [circuitViewMode, setCircuitViewMode] = useState("per-phase");
 
       // Synchronize slider state when dataset/activeFacility changes
       useEffect(() => {
@@ -2050,6 +2051,32 @@
     function Twin3dTab({ facility, motorSpeed, altSpeed, fluxIntensity, showFlux, showRotation, showCutaway, showThermal, motorS1, motorS2, loadTorque, setLoadTorque, setHoveredPart }) {
       const mountRef = useRef(null);
 
+      // Refs to store the latest slider and visualization settings
+      const motorSpeedRef = useRef(motorSpeed);
+      const altSpeedRef = useRef(altSpeed);
+      const fluxIntensityRef = useRef(fluxIntensity);
+      const showFluxRef = useRef(showFlux);
+      const showRotationRef = useRef(showRotation);
+      const showCutawayRef = useRef(showCutaway);
+      const showThermalRef = useRef(showThermal);
+      const motorS1Ref = useRef(motorS1);
+      const motorS2Ref = useRef(motorS2);
+      const loadTorqueRef = useRef(loadTorque);
+
+      // Keep refs updated on prop changes without triggering useEffect rebuilds
+      useEffect(() => {
+        motorSpeedRef.current = motorSpeed;
+        altSpeedRef.current = altSpeed;
+        fluxIntensityRef.current = fluxIntensity;
+        showFluxRef.current = showFlux;
+        showRotationRef.current = showRotation;
+        showCutawayRef.current = showCutaway;
+        showThermalRef.current = showThermal;
+        motorS1Ref.current = motorS1;
+        motorS2Ref.current = motorS2;
+        loadTorqueRef.current = loadTorque;
+      }, [motorSpeed, altSpeed, fluxIntensity, showFlux, showRotation, showCutaway, showThermal, motorS1, motorS2, loadTorque]);
+
       useEffect(() => {
         if (!mountRef.current) return;
         const container = mountRef.current;
@@ -2120,11 +2147,11 @@
         scene.add(machineGroup);
 
         const statorMat = new THREE.MeshStandardMaterial({
-          color: showThermal ? 0xef4444 : (facility === "motor" ? 0x3b82f6 : 0xf59e0b),
+          color: facility === "motor" ? 0x3b82f6 : 0xf59e0b,
           roughness: 0.1,
           metalness: 0.9,
-          transparent: showCutaway,
-          opacity: showCutaway ? 0.2 : 1.0
+          transparent: false,
+          opacity: 1.0
         });
 
         // 1. Bedplate Base
@@ -2153,8 +2180,8 @@
               emissive: 0xd97706,
               emissiveIntensity: 0.45,
               metalness: 0.9,
-              transparent: showCutaway ? false : true,
-              opacity: showCutaway ? 1.0 : 0.15
+              transparent: true,
+              opacity: 0.15
             })
           );
           coil.position.set(Math.cos(angle) * 0.85, Math.sin(angle) * 0.85, 0);
@@ -2186,7 +2213,7 @@
         // 6. Non-Drive End Cover Cowl
         const fanCowl = new THREE.Mesh(
           new THREE.CylinderGeometry(0.98, 0.98, 0.4, 32),
-          new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.7, transparent: showCutaway, opacity: showCutaway ? 0.15 : 1.0 })
+          new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.7 })
         );
         fanCowl.rotation.x = Math.PI / 2;
         fanCowl.position.set(0, 1.1, -1.2);
@@ -2219,9 +2246,7 @@
             new THREE.CylinderGeometry(0.72, 0.72, 1.4, 32),
             new THREE.MeshStandardMaterial({
               color: 0x4b5563,
-              metalness: 0.85,
-              transparent: showCutaway,
-              opacity: showCutaway ? 0.2 : 1.0
+              metalness: 0.85
             })
           );
           rotorCore.rotation.x = Math.PI / 2;
@@ -2234,9 +2259,7 @@
               new THREE.CylinderGeometry(0.035, 0.035, 1.45, 8),
               new THREE.MeshStandardMaterial({
                 color: 0xf59e0b,
-                metalness: 0.9,
-                transparent: showCutaway,
-                opacity: showCutaway ? 0.2 : 1.0
+                metalness: 0.9
               })
             );
             bar.position.set(Math.cos(angle) * 0.65, Math.sin(angle) * 0.65, 0);
@@ -2309,7 +2332,6 @@
         loadGroup.position.set(0, 1.1, 1.8);
         machineGroup.add(loadGroup);
 
-        // Spring balances scales references
         let scalePointer1, scalePointer2;
 
         if (facility === "motor") {
@@ -2377,7 +2399,7 @@
           loadGroup.add(coupling);
         }
 
-        // Live holographic display canvas above the machine base in 3D workspace
+        // Live holographic display canvas
         const holoCanvas = document.createElement("canvas");
         holoCanvas.width = 256;
         holoCanvas.height = 64;
@@ -2397,19 +2419,17 @@
 
         // Stator RMF flux loop rings
         const rmfGroup = new THREE.Group();
-        if (showFlux) {
-          scene.add(rmfGroup);
-          for (let i = 0; i < 4; i++) {
-            const fluxRing = new THREE.Mesh(
-              new THREE.TorusGeometry(0.88 + i * 0.05, 0.012, 8, 48),
-              new THREE.MeshBasicMaterial({ color: facility === "motor" ? 0x6366f1 : 0xf59e0b, transparent: true, opacity: 0.4 })
-            );
-            fluxRing.position.set(0, 1.4, -0.4 + i * 0.4);
-            rmfGroup.add(fluxRing);
-          }
+        scene.add(rmfGroup);
+        for (let i = 0; i < 4; i++) {
+          const fluxRing = new THREE.Mesh(
+            new THREE.TorusGeometry(0.88 + i * 0.05, 0.012, 8, 48),
+            new THREE.MeshBasicMaterial({ color: facility === "motor" ? 0x6366f1 : 0xf59e0b, transparent: true, opacity: 0.4 })
+          );
+          fluxRing.position.set(0, 1.4, -0.4 + i * 0.4);
+          rmfGroup.add(fluxRing);
         }
 
-        // Raycasting for interactive clicks & hover
+        // Raycasting
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
@@ -2441,11 +2461,11 @@
           animationId = requestAnimationFrame(animate);
           const time = clock.getElapsedTime();
           const delta = clock.getDelta();
-          const activeSpeed = facility === "motor" ? motorSpeed : altSpeed;
+          const activeSpeed = facility === "motor" ? motorSpeedRef.current : altSpeedRef.current;
           const speedFactor = activeSpeed / 1500;
 
           // Rotation updates
-          if (showRotation) {
+          if (showRotationRef.current) {
             shaft.rotation.y += delta * 20 * speedFactor;
             rotorCoreGroup.rotation.y += delta * 20 * speedFactor;
             fanBlades.rotation.y += delta * 20 * speedFactor;
@@ -2460,21 +2480,36 @@
           }
 
           // Rotating magnetic field animation
-          if (showFlux) {
-            rmfGroup.rotation.z += delta * fluxIntensity * 15;
+          rmfGroup.visible = showFluxRef.current;
+          if (showFluxRef.current) {
+            rmfGroup.rotation.z += delta * fluxIntensityRef.current * 15;
           }
+
+          // Dynamic setting updates (cutaway / thermal mapping) without scene rebuilding
+          const cutawayVal = showCutawayRef.current;
+          const thermalVal = showThermalRef.current;
+          
+          casing.material.transparent = cutawayVal;
+          casing.material.opacity = cutawayVal ? 0.2 : 1.0;
+          casing.material.color.setHex(thermalVal ? 0xef4444 : (facility === "motor" ? 0x3b82f6 : 0xf59e0b));
+          
+          fanCowl.material.transparent = cutawayVal;
+          fanCowl.material.opacity = cutawayVal ? 0.15 : 1.0;
+
+          windingsGroup.children.forEach(coil => {
+            coil.material.transparent = cutawayVal ? false : true;
+            coil.material.opacity = cutawayVal ? 1.0 : 0.15;
+          });
 
           // Move spring scale indicators dynamically
           if (facility === "motor" && scalePointer1 && scalePointer2) {
-            // S1 pointer position (offset from center)
-            scalePointer1.position.y = 0.6 - (motorS1 * 0.012);
-            // S2 pointer position
-            scalePointer2.position.y = 0.6 - (motorS2 * 0.012);
+            scalePointer1.position.y = 0.6 - (motorS1Ref.current * 0.012);
+            scalePointer2.position.y = 0.6 - (motorS2Ref.current * 0.012);
           }
 
           // Update dynamic 3D holographic digital readout canvas
           holoCtx.clearRect(0, 0, 256, 64);
-          holoCtx.fillStyle = "rgba(10, 25, 47, 0.8)";
+          holoCtx.fillStyle = "rgba(10, 20, 42, 0.8)";
           holoCtx.fillRect(0, 0, 256, 64);
           holoCtx.strokeStyle = "#eab308";
           holoCtx.lineWidth = 2;
@@ -2484,11 +2519,11 @@
           holoCtx.font = "bold 13px 'Space Grotesk', sans-serif";
           holoCtx.textAlign = "center";
           if (facility === "motor") {
-            holoCtx.fillText(`LOAD TORQUE: ${loadTorque.toFixed(1)} Nm`, 128, 25);
-            holoCtx.fillText(`S1: ${motorS1.toFixed(1)} kg | S2: ${motorS2.toFixed(1)} kg`, 128, 48);
+            holoCtx.fillText(`LOAD TORQUE: ${loadTorqueRef.current.toFixed(1)} Nm`, 128, 25);
+            holoCtx.fillText(`S1: ${motorS1Ref.current.toFixed(1)} kg | S2: ${motorS2Ref.current.toFixed(1)} kg`, 128, 48);
           } else {
-            holoCtx.fillText(`ROT. SPEED: ${altSpeed.toFixed(0)} RPM`, 128, 25);
-            holoCtx.fillText(`FIELD EXC. If: ${fluxIntensity.toFixed(2)} A`, 128, 48);
+            holoCtx.fillText(`ROT. SPEED: ${altSpeedRef.current.toFixed(0)} RPM`, 128, 25);
+            holoCtx.fillText(`FIELD EXC. If: ${fluxIntensityRef.current.toFixed(2)} A`, 128, 48);
           }
           holoTex.needsUpdate = true;
 
@@ -2534,7 +2569,7 @@
           window.removeEventListener("resize", handleResize);
           if (container) container.innerHTML = "";
         };
-      }, [facility, motorSpeed, altSpeed, fluxIntensity, showFlux, showRotation, showCutaway, showThermal, motorS1, motorS2, loadTorque]);
+      }, [facility]); // Re-instantiate ONLY when facility changes! Super high performance.
 
       return (
         <div className="w-full h-full relative select-none">
@@ -2550,15 +2585,20 @@
       const [showInfoModal, setShowInfoModal] = useState(false);
 
       const selectedBayRef = useRef(null);
+      const motorSpeedRef = useRef(motorSpeed);
+      const altSpeedRef = useRef(altSpeed);
+
       useEffect(() => {
         selectedBayRef.current = selectedBay;
-      }, [selectedBay]);
+        motorSpeedRef.current = motorSpeed;
+        altSpeedRef.current = altSpeed;
+      }, [selectedBay, motorSpeed, altSpeed]);
 
       useEffect(() => {
         if (!mountRef.current) return;
         const container = mountRef.current;
         const width = container.clientWidth;
-        const height = container.clientHeight;
+        const height = container.clientHeight || 600;
 
         const scene = new THREE.Scene();
         scene.fog = new THREE.FogExp2(0x0a1424, 0.02);
@@ -2569,6 +2609,7 @@
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(width, height);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.innerHTML = "";
         container.appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -2691,8 +2732,8 @@
           animeId = requestAnimationFrame(animate);
           const time = clock.getElapsedTime();
           
-          motorShaft.rotation.y = time * (motorSpeed / 100);
-          genShaft.rotation.y = time * (altSpeed / 100);
+          motorShaft.rotation.y = time * (motorSpeedRef.current / 100);
+          genShaft.rotation.y = time * (altSpeedRef.current / 100);
 
           const currentBay = selectedBayRef.current;
           if (currentBay === "motor") {
@@ -2776,7 +2817,7 @@
           window.removeEventListener('dblclick', onDblClick);
           if (container) container.innerHTML = "";
         };
-      }, [motorSpeed, altSpeed]);
+      }, []); // Empty dependency array ensures it builds the scene only once on mount
 
       // Hyper-Zoom launch animation transition handler
       const launchLabWithAnimation = (facilityId) => {
