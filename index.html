@@ -3086,13 +3086,18 @@
 
         // Helper to create a premium motor structure
         const createPremiumMachine = (group, frameColor, coilColor) => {
-          // Stator Frame (Hollow Tube)
-          const statorOuter = new THREE.CylinderGeometry(1.2, 1.2, 2.2, 32, 1, true);
-          const statorInner = new THREE.CylinderGeometry(0.8, 0.8, 2.2, 32, 1, true);
+          // Stator Frame (Hollow Tube with 90-degree cutaway to see rotation)
+          const cutawayAngle = Math.PI * 1.5;
+          const statorOuter = new THREE.CylinderGeometry(1.2, 1.2, 2.2, 32, 1, true, 0, cutawayAngle);
+          const statorInner = new THREE.CylinderGeometry(0.8, 0.8, 2.2, 32, 1, true, 0, cutawayAngle);
           const statorMat = new THREE.MeshStandardMaterial({ color: frameColor, metalness: 0.9, roughness: 0.2, side: THREE.DoubleSide });
           
           const statorO = new THREE.Mesh(statorOuter, statorMat);
           const statorI = new THREE.Mesh(statorInner, statorMat);
+          
+          // Internal Lighting for clarity
+          const internalLight = new THREE.PointLight(coilColor, 2.0, 10);
+          internalLight.position.y = 1.0;
           statorO.rotation.x = Math.PI / 2;
           statorI.rotation.x = Math.PI / 2;
           statorO.position.y = 1.0;
@@ -3113,7 +3118,7 @@
 
           // Rotor (Solid Cylinder)
           const rotorGeom = new THREE.CylinderGeometry(0.75, 0.75, 2.3, 32);
-          const rotorMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8, roughness: 0.3 });
+          const rotorMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8, roughness: 0.3, emissive: 0x222222 });
           const rotor = new THREE.Mesh(rotorGeom, rotorMat);
           rotor.rotation.x = Math.PI / 2;
           rotor.position.y = 1.0;
@@ -3145,7 +3150,7 @@
           hitbox.rotation.x = Math.PI / 2;
           hitbox.position.y = 1.0;
 
-          group.add(statorO, statorI, windings, rotor, shaft, fluxGroup, hitbox);
+          group.add(statorO, statorI, windings, rotor, shaft, fluxGroup, hitbox, internalLight);
 
           return { rotor, shaft, fluxGroup, hitbox };
         };
