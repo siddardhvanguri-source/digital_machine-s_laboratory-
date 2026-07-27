@@ -355,14 +355,65 @@
       return coefs.reduce((sum, coef, idx) => sum + coef * polyFeatures[idx], 0);
     }
 
+    // Component: 3-Phase Power Meter
+    function ThreePhaseMeter({ activeFacility, voltage, power }) {
+      return (
+        <div className="border border-slate-700 bg-slate-900 rounded-lg p-3 w-full my-2">
+          <div className="flex justify-between items-center mb-2 border-b border-slate-700 pb-1">
+            <span className="text-[10px] font-bold text-slate-400">3-PHASE MONITOR</span>
+            <span className="text-[10px] font-mono text-yellow-500 font-bold bg-slate-950 px-2 py-0.5 rounded">{power.toFixed(1)} {activeFacility === 'motor' ? 'W' : 'VA'}</span>
+          </div>
+          <div className="flex justify-between items-end h-16 space-x-2">
+            <div className="flex-1 flex flex-col items-center">
+              <div className="w-full bg-slate-800 rounded-t relative h-full overflow-hidden border-b border-red-500">
+                <div className="absolute bottom-0 w-full bg-red-500/80 transition-all duration-300" style={{ height: `${Math.min(100, (voltage/435)*100)}%` }}></div>
+              </div>
+              <span className="text-[8px] mt-1 font-mono text-red-400">R</span>
+            </div>
+            <div className="flex-1 flex flex-col items-center">
+              <div className="w-full bg-slate-800 rounded-t relative h-full overflow-hidden border-b border-yellow-500">
+                <div className="absolute bottom-0 w-full bg-yellow-500/80 transition-all duration-300" style={{ height: `${Math.min(100, (voltage/435)*100)}%` }}></div>
+              </div>
+              <span className="text-[8px] mt-1 font-mono text-yellow-400">Y</span>
+            </div>
+            <div className="flex-1 flex flex-col items-center">
+              <div className="w-full bg-slate-800 rounded-t relative h-full overflow-hidden border-b border-blue-500">
+                <div className="absolute bottom-0 w-full bg-blue-500/80 transition-all duration-300" style={{ height: `${Math.min(100, (voltage/435)*100)}%` }}></div>
+              </div>
+              <span className="text-[8px] mt-1 font-mono text-blue-400">B</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // Main App Container
     function App() {
-      const [view, setView] = useState("hero"); // hero or dashboard
+      const [view, setView] = useState("login"); // login, hero, or dashboard
+      const [currentUser, setCurrentUser] = useState(null); // { username, role }
+      const [loginUsername, setLoginUsername] = useState("");
+      const [loginPassword, setLoginPassword] = useState("");
+      const [loginError, setLoginError] = useState("");
+      
       const [activeFacility, setActiveFacility] = useState("motor"); 
       const [selectedDataset, setSelectedDataset] = useState("dataset_415v");
       const [playbackIndex, setPlaybackIndex] = useState(0);
       const [isPlaying, setIsPlaying] = useState(false);
       const [activeTab, setActiveTab] = useState("eee-equations");
+      
+      const [rightPanelTab, setRightPanelTab] = useState("telemetry"); // telemetry, nameplate, oscilloscope
+      const [customPlots, setCustomPlots] = useState([]);
+      const [showPlotModal, setShowPlotModal] = useState(false);
+      
+      const [showAdminChat, setShowAdminChat] = useState(false);
+      const [adminPrompt, setAdminPrompt] = useState("");
+      const [isImproving, setIsImproving] = useState(false);
+      const [showAdminSettings, setShowAdminSettings] = useState(false);
+      const [adminBranches, setAdminBranches] = useState([]);
+      
+      const [plotXAxis, setPlotXAxis] = useState("Voltage");
+      const [plotYAxis, setPlotYAxis] = useState("Efficiency");
+      const [dbStatus, setDbStatus] = useState(null);
       
       // Dynamic Simulation Sliders for Induction Motor
       const [slip, setSlip] = useState(0.015);
@@ -392,6 +443,84 @@
       const [showThermal, setShowThermal] = useState(false);
       const [hoveredPart, setHoveredPart] = useState("No Component Selected");
 
+      useEffect(() => {
+        // Fetch MongoDB connection status on mount
+        fetch('/api/get_observations')
+          .then(res => res.json())
+          .then(data => {
+            if (data.error) setDbStatus("offline");
+            else setDbStatus("online");
+          })
+          .catch(() => setDbStatus("offline"));
+      }, []);
+
+      const handleLogin = (e) => {
+        e.preventDefault();
+        setLoginError("");
+        fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: loginUsername, password: loginPassword })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success") {
+            setCurrentUser({ username: data.username, role: data.role });
+            setView("hero");
+          } else {
+            setLoginError(data.error || "Login failed");
+          }
+        })
+        .catch(() => setLoginError("Server unreachable."));
+      };
+
+      const submitImprovement = () => {
+        if (!adminPrompt.trim()) return;
+        setIsImproving(true);
+        fetch('/api/ai/improve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: adminPrompt, username: currentUser?.username })
+        })
+        .then(res => res.json())
+        .then(data => {
+          setIsImproving(false);
+          setAdminPrompt("");
+          setShowAdminChat(false);
+          alert(data.message || "Improvement submitted!");
+        })
+        .catch(() => {
+          setIsImproving(false);
+          alert("Error submitting improvement.");
+        });
+      };
+
+      const fetchAdminBranches = () => {
+        fetch('/api/git/branches')
+        .then(res => res.json())
+        .then(data => setAdminBranches(data))
+        .catch(console.error);
+      };
+
+      const publishBranch = (branchName) => {
+        fetch('/api/git/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ branch_name: branchName })
+        })
+        .then(res => res.json())
+        .then(data => {
+          alert(data.message);
+          fetchAdminBranches();
+        })
+        .catch(console.error);
+      };
+
+      useEffect(() => {
+        if (showAdminSettings) {
+          fetchAdminBranches();
+        }
+      }, [showAdminSettings]);
       // Interactive measurements
       const [motorObservationTable, setMotorObservationTable] = useState([
         { id: 1, v: 415.0, i: 3.2, p: 300, s1: 0.0, s2: 0.0, speed: 1497 },
@@ -691,9 +820,105 @@
         }
       };
 
+      const saveObservation = async () => {
+        try {
+          const payload = activeFacility === "motor" ? {
+            facility: "motor",
+            voltage,
+            frequency,
+            slip,
+            loadTorque,
+            rpm: motorPhysicsResults.speed,
+            eff: motorPhysicsResults.eff,
+            temp: motorPhysicsResults.winding_temp
+          } : {
+            facility: "alternator",
+            If: aIf,
+            Ia: aIa,
+            speed: aSpeed,
+            vt_line: alternatorPhysicsResults.vt_line,
+            Eph: alternatorPhysicsResults.Eph,
+            vr: alternatorPhysicsResults.vr
+          };
+          const res = await fetch("http://localhost:5000/api/record_observation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            setDbStatus("✅ Saved");
+            setTimeout(() => setDbStatus(null), 3000);
+          } else {
+            setDbStatus("❌ DB Error");
+            setTimeout(() => setDbStatus(null), 3000);
+          }
+        } catch (e) {
+          setDbStatus("❌ Network Error");
+          setTimeout(() => setDbStatus(null), 3000);
+        }
+      };
+
       return (
         <div className="w-full h-full flex flex-col justify-between select-none">
-          {/* Header */}
+          {view === "login" ? (
+            <div className="w-full h-full flex items-center justify-center bg-slate-950 bg-opacity-90 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #4f46e5 0%, transparent 40%)' }}></div>
+              <div className="z-10 max-w-sm w-full p-8 glass-card border border-indigo-500 rounded-xl shadow-2xl space-y-6 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+                <div className="text-center space-y-2">
+                  <div className="w-12 h-12 mx-auto bg-indigo-600 rounded-lg flex items-center justify-center glow-blue mb-4">
+                    <i className="fa-solid fa-microchip text-yellow-400 text-xl"></i>
+                  </div>
+                  <h2 className="space-font text-yellow-500 font-bold text-lg uppercase tracking-widest">Portal Auth</h2>
+                  <p className="text-xs text-slate-400">Machines Digital Twin Laboratory</p>
+                </div>
+                
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Username</label>
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i className="fa-solid fa-user text-slate-400 text-xs"></i>
+                      </div>
+                      <input 
+                        type="text" 
+                        value={loginUsername}
+                        onChange={(e) => setLoginUsername(e.target.value)}
+                        className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-9 p-2.5 outline-none transition-all"
+                        placeholder="admin or student"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Password</label>
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i className="fa-solid fa-lock text-slate-400 text-xs"></i>
+                      </div>
+                      <input 
+                        type="password" 
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-9 p-2.5 outline-none transition-all"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+                  {loginError && <div className="text-red-400 text-[11px] font-bold text-center animate-pulse">{loginError}</div>}
+                  <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-lg text-sm uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(79,70,229,0.5)]">
+                    Authenticate
+                  </button>
+                </form>
+                
+                <div className="text-[10px] text-center text-slate-500 pt-4 border-t border-slate-800 flex justify-between">
+                  <span>DB: <span className={dbStatus === 'online' ? 'text-emerald-400' : 'text-red-400'}>{dbStatus || 'checking...'}</span></span>
+                  <span>Ver 5.5.0-PRO</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Header */}
           <header className="glass-header w-full px-6 py-3 flex items-center justify-between z-30 sticky top-0 shrink-0">
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center glow-blue border border-indigo-400">
@@ -724,6 +949,21 @@
                   <i className="fa-solid fa-arrow-left-long mr-1.5"></i> Return to Facility Map
                 </button>
               )}
+              {currentUser?.role === 'admin' && (
+                <button 
+                  onClick={() => setShowAdminSettings(true)}
+                  className="px-4 py-1.5 text-xs font-bold bg-indigo-900 border border-indigo-500 hover:border-indigo-400 text-indigo-200 rounded transition-all">
+                  <i className="fa-solid fa-code-merge mr-1.5"></i> Git Pub
+                </button>
+              )}
+              <button 
+                onClick={() => {
+                  setCurrentUser(null);
+                  setView("login");
+                }}
+                className="px-3 py-1.5 text-xs font-bold bg-slate-900 border border-slate-700 hover:border-red-500 text-slate-400 hover:text-red-400 rounded transition-all">
+                <i className="fa-solid fa-power-off"></i>
+              </button>
             </div>
           </header>
 
@@ -745,12 +985,12 @@
                 <div className="relative w-full h-[550px] shrink-0 border-b border-slate-900 bg-slate-950 flex flex-col md:flex-row items-center justify-center">
                   
                   {/* Floating Overlay Left: Console Controls */}
-                  <div className="absolute left-6 top-6 z-25 w-80 glass-card p-4 space-y-4 max-h-[500px] overflow-y-auto select-none pointer-events-auto">
-                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                      <h3 className="space-font font-bold text-xs text-yellow-500 uppercase tracking-widest">
+                  <div className="absolute left-6 top-6 z-25 w-80 bg-slate-950/80 backdrop-blur-xl border border-indigo-500/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl p-5 space-y-4 max-h-[500px] overflow-y-auto select-none pointer-events-auto">
+                    <div className="flex justify-between items-center border-b border-indigo-500/30 pb-3 mb-2">
+                      <h3 className="space-font font-bold text-xs text-yellow-500 uppercase tracking-widest drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">
                         <i className="fa-solid fa-sliders mr-2"></i> Control Desk
                       </h3>
-                      <span className="text-[9px] text-blue-400 font-bold bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-900 uppercase">
+                      <span className="text-[9px] text-indigo-200 font-bold bg-indigo-900/80 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(79,70,229,0.5)] border border-indigo-400 uppercase tracking-widest">
                         {activeFacility}
                       </span>
                     </div>
@@ -766,10 +1006,10 @@
                         <div className="pt-2 border-t border-slate-900">
                           <span className="text-[9px] text-slate-500 uppercase font-bold block mb-1">Preset Conditions</span>
                           <div className="grid grid-cols-2 gap-1.5">
-                            <button onClick={() => applyPreset("noload")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">No Load</button>
-                            <button onClick={() => applyPreset("halfload")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">Half Load</button>
-                            <button onClick={() => applyPreset("fullload")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">Full Load</button>
-                            <button onClick={() => applyPreset("blocked")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">Blocked Rotor</button>
+                            <button onClick={() => applyPreset("noload")} className="py-1.5 px-1.5 text-[9px] font-bold bg-slate-900/50 hover:bg-indigo-900 border border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white rounded shadow-sm hover:shadow-[0_0_10px_rgba(79,70,229,0.5)] transition-all">No Load</button>
+                            <button onClick={() => applyPreset("halfload")} className="py-1.5 px-1.5 text-[9px] font-bold bg-slate-900/50 hover:bg-indigo-900 border border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white rounded shadow-sm hover:shadow-[0_0_10px_rgba(79,70,229,0.5)] transition-all">Half Load</button>
+                            <button onClick={() => applyPreset("fullload")} className="py-1.5 px-1.5 text-[9px] font-bold bg-slate-900/50 hover:bg-indigo-900 border border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white rounded shadow-sm hover:shadow-[0_0_10px_rgba(79,70,229,0.5)] transition-all">Full Load</button>
+                            <button onClick={() => applyPreset("blocked")} className="py-1.5 px-1.5 text-[9px] font-bold bg-slate-900/50 hover:bg-red-900/50 border border-slate-700 hover:border-red-500 text-slate-300 hover:text-white rounded shadow-sm hover:shadow-[0_0_10px_rgba(239,68,68,0.5)] transition-all">Blocked Rotor</button>
                           </div>
                         </div>
                       </div>
@@ -784,10 +1024,10 @@
                         <div className="pt-2 border-t border-slate-900">
                           <span className="text-[9px] text-slate-500 uppercase font-bold block mb-1">Preset Conditions</span>
                           <div className="grid grid-cols-2 gap-1.5">
-                            <button onClick={() => applyPreset("noload")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">No Load</button>
-                            <button onClick={() => applyPreset("lagging")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">0.8 Lagging</button>
-                            <button onClick={() => applyPreset("unity")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">1.0 Unity</button>
-                            <button onClick={() => applyPreset("leading")} className="py-1 px-1.5 text-[9px] font-bold bg-slate-900 hover:bg-indigo-950 border border-slate-800 text-slate-400 hover:text-yellow-500 rounded transition-all">0.8 Leading</button>
+                            <button onClick={() => applyPreset("noload")} className="py-1.5 px-1.5 text-[9px] font-bold bg-slate-900/50 hover:bg-indigo-900 border border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white rounded shadow-sm hover:shadow-[0_0_10px_rgba(79,70,229,0.5)] transition-all">No Load</button>
+                            <button onClick={() => applyPreset("lagging")} className="py-1.5 px-1.5 text-[9px] font-bold bg-slate-900/50 hover:bg-indigo-900 border border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white rounded shadow-sm hover:shadow-[0_0_10px_rgba(79,70,229,0.5)] transition-all">0.8 Lagging</button>
+                            <button onClick={() => applyPreset("unity")} className="py-1.5 px-1.5 text-[9px] font-bold bg-slate-900/50 hover:bg-indigo-900 border border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white rounded shadow-sm hover:shadow-[0_0_10px_rgba(79,70,229,0.5)] transition-all">1.0 Unity</button>
+                            <button onClick={() => applyPreset("leading")} className="py-1.5 px-1.5 text-[9px] font-bold bg-slate-900/50 hover:bg-indigo-900 border border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white rounded shadow-sm hover:shadow-[0_0_10px_rgba(79,70,229,0.5)] transition-all">0.8 Leading</button>
                           </div>
                         </div>
                       </div>
@@ -823,81 +1063,107 @@
                   </div>
 
                   {/* Floating Overlay Right: Live circular telemetry */}
-                  <div className="absolute right-6 top-6 z-25 w-80 space-y-4 max-h-[500px] overflow-y-auto select-none pointer-events-auto">
+                  <div className="absolute right-6 top-6 z-25 w-80 max-h-[500px] select-none pointer-events-auto">
                     
-                    {/* Machine Stamped Metal Nameplate */}
-                    <div className="stamped-nameplate p-3 rounded-lg border border-slate-500 text-slate-300 font-mono text-[9px] leading-tight space-y-1 glow-gold">
-                      {activeFacility === "motor" ? (
-                        <>
-                          <div className="text-center font-bold border-b border-slate-700 pb-1 mb-1 text-[10px] text-yellow-500 space-font">KIRLOSKAR ELECTRIC CO. LTD.</div>
-                          <div className="flex justify-between"><span>TYPE: KE-IM2.2</span> <span>NO: 785942-A</span></div>
-                          <div className="flex justify-between"><span>POWER: 2.2 kW / 3 HP</span> <span>RPM: 1440</span></div>
-                          <div className="flex justify-between"><span>VOLTS: 415 V Δ</span> <span>AMPS: 4.6 A</span></div>
-                          <div className="flex justify-between"><span>INS.CL: F // IP55</span> <span>Hz: 50 Hz</span></div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-center font-bold border-b border-slate-700 pb-1 mb-1 text-[10px] text-yellow-500 space-font">CROMPTON GREAVES LTD.</div>
-                          <div className="flex justify-between"><span>TYPE: CG-SA3.5</span> <span>NO: 994852-X</span></div>
-                          <div className="flex justify-between"><span>CAPACITY: 3.5 kVA</span> <span>RPM: 1500</span></div>
-                          <div className="flex justify-between"><span>VOLTS: 415 V Y</span> <span>AMPS: 5.0 A</span></div>
-                          <div className="flex justify-between"><span>EXC.VOLT: 110V DC</span> <span>EXC.AMP: 1.2A</span></div>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="glass-card p-4 space-y-4">
-                      <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                        <h3 className="space-font font-bold text-xs text-yellow-500 uppercase tracking-widest">
-                          <i className="fa-solid fa-chart-line mr-2"></i> Live Telemetry
-                        </h3>
-                        <span className="text-[9px] text-emerald-400 font-mono">ONLINE</span>
+                    <div className="bg-slate-950/80 backdrop-blur-xl border border-indigo-500/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl flex flex-col overflow-hidden">
+                      {/* Tabs Header */}
+                      <div className="flex border-b border-indigo-500/30 bg-slate-950/40">
+                        <button onClick={() => setRightPanelTab('telemetry')} className={`flex-1 py-3 text-[10px] font-bold uppercase transition-all ${rightPanelTab === 'telemetry' ? 'text-yellow-500 border-b-2 border-yellow-500 bg-indigo-900/40 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}>Telemetry</button>
+                        <button onClick={() => setRightPanelTab('nameplate')} className={`flex-1 py-3 text-[10px] font-bold uppercase transition-all ${rightPanelTab === 'nameplate' ? 'text-indigo-400 border-b-2 border-indigo-400 bg-indigo-900/40 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}>Nameplate</button>
+                        <button onClick={() => setRightPanelTab('scope')} className={`flex-1 py-3 text-[10px] font-bold uppercase transition-all ${rightPanelTab === 'scope' ? 'text-emerald-400 border-b-2 border-emerald-400 bg-indigo-900/40 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}>Scope</button>
                       </div>
 
-                      {activeFacility === "motor" ? (
-                        <div className="space-y-2 text-xs">
-                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
-                            <span className="text-[10px] text-slate-400">Rotor Speed</span>
-                            <span className="text-sm font-bold text-yellow-500 font-mono">{motorPhysicsResults.speed.toFixed(0)} RPM</span>
+                      {/* Tab Content */}
+                      <div className="p-5 space-y-4 max-h-[400px] overflow-y-auto">
+                        
+                        {rightPanelTab === 'nameplate' && (
+                          <div className="stamped-nameplate p-3 rounded-lg border border-slate-500 text-slate-300 font-mono text-[9px] leading-tight space-y-1 glow-gold shadow-lg">
+                            {activeFacility === "motor" ? (
+                              <>
+                                <div className="text-center font-bold border-b border-slate-700 pb-1 mb-1 text-[10px] text-yellow-500 space-font">KIRLOSKAR ELECTRIC CO. LTD.</div>
+                                <div className="flex justify-between"><span>TYPE: KE-IM2.2</span> <span>NO: 785942-A</span></div>
+                                <div className="flex justify-between"><span>POWER: 2.2 kW / 3 HP</span> <span>RPM: 1440</span></div>
+                                <div className="flex justify-between"><span>VOLTS: 415 V Δ</span> <span>AMPS: 4.6 A</span></div>
+                                <div className="flex justify-between"><span>INS.CL: F // IP55</span> <span>Hz: 50 Hz</span></div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="text-center font-bold border-b border-slate-700 pb-1 mb-1 text-[10px] text-yellow-500 space-font">CROMPTON GREAVES LTD.</div>
+                                <div className="flex justify-between"><span>TYPE: CG-SA3.5</span> <span>NO: 994852-X</span></div>
+                                <div className="flex justify-between"><span>CAPACITY: 3.5 kVA</span> <span>RPM: 1500</span></div>
+                                <div className="flex justify-between"><span>VOLTS: 415 V Y</span> <span>AMPS: 5.0 A</span></div>
+                                <div className="flex justify-between"><span>EXC.VOLT: 110V DC</span> <span>EXC.AMP: 1.2A</span></div>
+                              </>
+                            )}
                           </div>
-                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
-                            <span className="text-[10px] text-slate-400">Efficiency</span>
-                            <span className="text-sm font-bold text-emerald-400 font-mono">{motorPhysicsResults.eff.toFixed(1)} %</span>
-                          </div>
-                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
-                            <span className="text-[10px] text-slate-400">Winding Temp</span>
-                            <span className="text-sm font-bold text-red-400 font-mono">{motorPhysicsResults.winding_temp.toFixed(1)} °C</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2 text-xs">
-                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
-                            <span className="text-[10px] text-slate-400">Terminal Line Vt</span>
-                            <span className="text-sm font-bold text-yellow-500 font-mono">{alternatorPhysicsResults.vt_line.toFixed(1)} V</span>
-                          </div>
-                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
-                            <span className="text-[10px] text-slate-400">Generated EMF Eph</span>
-                            <span className="text-sm font-bold text-emerald-400 font-mono">{alternatorPhysicsResults.Eph.toFixed(1)} V</span>
-                          </div>
-                          <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-800">
-                            <span className="text-[10px] text-slate-400">Voltage Regulation</span>
-                            <span className="text-sm font-bold text-indigo-400 font-mono">{alternatorPhysicsResults.vr.toFixed(2)} %</span>
-                          </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Scope Screen */}
-                      <div className="border border-slate-800 rounded p-2 bg-slate-950/70">
-                        <span className="text-[8px] text-slate-500 font-mono block mb-1">OSCILLOSCOPE WAVEFORM</span>
-                        <Oscilloscope frequency={activeFacility === "motor" ? frequency : aSpeed/30.0} voltage={activeFacility === "motor" ? voltage : alternatorPhysicsResults.vt_line} />
-                      </div>
+                        {rightPanelTab === 'telemetry' && (
+                          <div className="space-y-4 animate-fade-in">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[9px] text-emerald-400 font-mono border border-emerald-900 bg-emerald-950/40 px-2 py-0.5 rounded">ONLINE</span>
+                              <button onClick={saveObservation} className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[9px] font-bold shadow-lg shadow-indigo-900/50 transition-all flex items-center">
+                                <i className="fa-solid fa-database mr-1"></i> {dbStatus || "Record to DB"}
+                              </button>
+                            </div>
 
-                      {/* Hovered Component Display */}
-                      <div className="border border-yellow-950/80 rounded p-2 bg-yellow-950/20 text-center">
-                        <span className="text-[8px] text-slate-400 block">HOVERED PART</span>
-                        <p className="text-yellow-500 font-bold text-xs tracking-wider uppercase mt-1">
-                          {hoveredPart}
-                        </p>
+                            {activeFacility === "motor" ? (
+                              <div className="space-y-2 text-xs">
+                                <div className="flex items-center justify-between p-2 bg-slate-900/80 rounded border border-slate-700 shadow-inner">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase">Rotor Speed</span>
+                                  <span className="text-sm font-bold text-yellow-500 font-mono">{motorPhysicsResults.speed.toFixed(0)} RPM</span>
+                                </div>
+                                <div className="flex items-center justify-between p-2 bg-slate-900/80 rounded border border-slate-700 shadow-inner">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase">Efficiency</span>
+                                  <span className="text-sm font-bold text-emerald-400 font-mono">{motorPhysicsResults.eff.toFixed(1)} %</span>
+                                </div>
+                                <div className="flex items-center justify-between p-2 bg-slate-900/80 rounded border border-slate-700 shadow-inner">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase">Winding Temp</span>
+                                  <span className="text-sm font-bold text-red-400 font-mono">{motorPhysicsResults.winding_temp.toFixed(1)} °C</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2 text-xs">
+                                <div className="flex items-center justify-between p-2 bg-slate-900/80 rounded border border-slate-700 shadow-inner">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase">Terminal Line Vt</span>
+                                  <span className="text-sm font-bold text-yellow-500 font-mono">{alternatorPhysicsResults.vt_line.toFixed(1)} V</span>
+                                </div>
+                                <div className="flex items-center justify-between p-2 bg-slate-900/80 rounded border border-slate-700 shadow-inner">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase">Generated EMF Eph</span>
+                                  <span className="text-sm font-bold text-emerald-400 font-mono">{alternatorPhysicsResults.Eph.toFixed(1)} V</span>
+                                </div>
+                                <div className="flex items-center justify-between p-2 bg-slate-900/80 rounded border border-slate-700 shadow-inner">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase">Voltage Regulation</span>
+                                  <span className="text-sm font-bold text-indigo-400 font-mono">{alternatorPhysicsResults.vr.toFixed(2)} %</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Restored 3-Phase Power Meter */}
+                            <ThreePhaseMeter 
+                              activeFacility={activeFacility}
+                              voltage={activeFacility === "motor" ? voltage : alternatorPhysicsResults.vt_line} 
+                              power={activeFacility === "motor" ? motorPhysicsResults.p_in : alternatorPhysicsResults.p_out}
+                            />
+                          </div>
+                        )}
+
+                        {rightPanelTab === 'scope' && (
+                          <div className="space-y-4 animate-fade-in">
+                            <div className="border border-slate-700 rounded p-2 bg-slate-950 shadow-inner shadow-black">
+                              <span className="text-[8px] text-slate-500 font-mono block mb-1">OSCILLOSCOPE WAVEFORM</span>
+                              <Oscilloscope frequency={activeFacility === "motor" ? frequency : aSpeed/30.0} voltage={activeFacility === "motor" ? voltage : alternatorPhysicsResults.vt_line} />
+                            </div>
+
+                            <div className="border border-yellow-900/50 rounded p-3 bg-yellow-950/10 text-center">
+                              <span className="text-[8px] text-slate-500 font-bold tracking-widest block uppercase">Selected Hardware</span>
+                              <p className="text-yellow-500 font-bold text-xs tracking-wider uppercase mt-1">
+                                {hoveredPart}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
                       </div>
                     </div>
                   </div>
@@ -1248,6 +1514,11 @@
                         className="px-3 py-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded text-[10px] text-yellow-500 font-bold uppercase transition-all">
                         <i className="fa-solid fa-download mr-1"></i> Export Simulation Data
                       </button>
+                      <button 
+                        onClick={() => setShowPlotModal(true)}
+                        className="px-3 py-1 bg-indigo-900 hover:bg-indigo-800 border border-indigo-700 rounded text-[10px] text-white font-bold uppercase transition-all ml-2 shadow-lg shadow-indigo-900/50">
+                        <i className="fa-solid fa-plus mr-1"></i> Add Custom Plot
+                      </button>
                     </div>
 
                     <CurvesDeck 
@@ -1255,6 +1526,29 @@
                       r1={r1} r2Prime={r2Prime} x1={x1} x2Prime={x2Prime} xm={xm} rc={rc} pRot={pRot} voltage={voltage} frequency={frequency} currentSlip={slip} currentPower={motorPhysicsResults.p_out}
                       aIf={aIf} aIa={aIa} aPF={aPF} aSpeed={aSpeed} aRa={aRa} aXs={aXs} alternatorResults={alternatorPhysicsResults}
                     />
+
+                    {/* Custom Plots Container */}
+                    {customPlots.length > 0 && (
+                      <div className="mt-8 space-y-6">
+                        <h4 className="space-font font-bold text-xs text-indigo-400 uppercase tracking-wider border-b border-slate-800 pb-2">User Custom Plots</h4>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {customPlots.map((plot, idx) => (
+                            <div key={idx} className="bg-slate-950/60 rounded-xl border border-slate-800 p-2 relative">
+                              <button onClick={() => setCustomPlots(customPlots.filter((_, i) => i !== idx))} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 z-10">
+                                <i className="fa-solid fa-times"></i>
+                              </button>
+                              <div className="text-center text-[10px] text-slate-400 font-bold uppercase mb-2">{plot.yAxis} vs {plot.xAxis}</div>
+                              {/* We will just use the CurvesDeck pattern and render a simple Plotly div here. 
+                                  For a robust implementation, we'd extract the Plotly logic into a CustomPlot component. */}
+                              <div className="flex items-center justify-center h-[300px] border border-slate-800 border-dashed rounded bg-slate-900/30 text-[10px] text-slate-500 font-mono">
+                                [Custom Plot: {plot.xAxis} ➔ {plot.yAxis}]
+                                {/* In a full implementation, we pass the dataset and axes to Plotly here */}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </section>
 
                   {/* Section 4: Alternator Interactive Phasor Diagram */}
@@ -1571,11 +1865,154 @@
             )}
           </div>
 
+          {/* Custom Plot Modal */}
+          {showPlotModal && (
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6 pointer-events-auto">
+              <div className="w-full max-w-sm glass-card p-6 border border-indigo-500 space-y-4 shadow-2xl">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                  <h3 className="space-font font-bold text-sm text-yellow-500 uppercase tracking-widest">
+                    <i className="fa-solid fa-chart-line mr-2"></i> Configure Custom Plot
+                  </h3>
+                  <button onClick={() => setShowPlotModal(false)} className="text-slate-400 hover:text-slate-200">
+                    <i className="fa-solid fa-times"></i>
+                  </button>
+                </div>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">X-Axis Variable</label>
+                    <select 
+                      value={plotXAxis} 
+                      onChange={(e) => setPlotXAxis(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded p-2 focus:border-indigo-500 outline-none">
+                      <option value="Voltage">Voltage</option>
+                      <option value="Current">Current</option>
+                      <option value="Speed">Speed</option>
+                      <option value="Slip">Slip</option>
+                      <option value="Torque">Torque</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Y-Axis Variable</label>
+                    <select 
+                      value={plotYAxis} 
+                      onChange={(e) => setPlotYAxis(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded p-2 focus:border-indigo-500 outline-none">
+                      <option value="Efficiency">Efficiency</option>
+                      <option value="Power">Power</option>
+                      <option value="Torque">Torque</option>
+                      <option value="Current">Current</option>
+                      <option value="PowerFactor">Power Factor</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800 flex justify-end">
+                  <button 
+                    onClick={() => {
+                      setCustomPlots([...customPlots, { xAxis: plotXAxis, yAxis: plotYAxis }]);
+                      setShowPlotModal(false);
+                    }}
+                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-bold uppercase transition-all shadow-lg shadow-indigo-900/50">
+                    Add Plot
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Footer */}
           <footer className="w-full bg-slate-950 border-t border-slate-900 px-6 py-2.5 flex items-center justify-between text-[11px] text-slate-500 z-10 shrink-0">
             <div>Developed in compliance with Siemens Commercial Digital Twin APIs.</div>
             <div className="font-mono text-[10px]">VER: 5.5.0-PRO</div>
           </footer>
+          {/* Admin FAB & Modals */}
+          {currentUser?.role === 'admin' && (
+            <>
+              {/* Floating Action Button */}
+              <button 
+                onClick={() => setShowAdminChat(!showAdminChat)}
+                className="absolute bottom-10 right-6 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 rounded-full shadow-[0_0_20px_rgba(79,70,229,0.6)] flex items-center justify-center z-40 transition-transform transform hover:scale-110">
+                <i className={`fa-solid ${showAdminChat ? 'fa-times' : 'fa-wand-magic-sparkles'} text-white text-xl`}></i>
+              </button>
+
+              {/* Admin AI Chat Modal */}
+              {showAdminChat && (
+                <div className="absolute bottom-28 right-6 w-80 bg-slate-950/95 backdrop-blur-md border border-indigo-500 rounded-xl shadow-2xl z-40 flex flex-col overflow-hidden">
+                  <div className="bg-indigo-900/50 p-3 border-b border-indigo-500 flex items-center justify-between">
+                    <span className="font-bold text-xs text-indigo-200 uppercase tracking-widest"><i className="fa-solid fa-robot mr-2"></i> AI Copilot</span>
+                  </div>
+                  <div className="p-4 flex-grow flex flex-col space-y-3 h-64 overflow-y-auto">
+                    <div className="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300">
+                      Hello Admin. Describe a UI or logic improvement you'd like to make to the digital twin. I will generate the code and push it to a new Git branch automatically.
+                    </div>
+                  </div>
+                  <div className="p-3 border-t border-slate-800 bg-slate-900 flex space-x-2">
+                    <input 
+                      type="text" 
+                      value={adminPrompt}
+                      onChange={(e) => setAdminPrompt(e.target.value)}
+                      placeholder="E.g., Make the header red..."
+                      className="flex-grow bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-indigo-500 outline-none"
+                    />
+                    <button 
+                      onClick={submitImprovement}
+                      disabled={isImproving}
+                      className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded px-3 py-1.5 flex items-center justify-center transition-colors">
+                      {isImproving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-paper-plane"></i>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Admin Settings / Git Pub Modal */}
+              {showAdminSettings && (
+                <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6 pointer-events-auto">
+                  <div className="w-full max-w-2xl bg-slate-900 border border-indigo-500 rounded-xl shadow-2xl overflow-hidden flex flex-col h-[70vh]">
+                    <div className="bg-indigo-950 p-4 border-b border-indigo-500 flex justify-between items-center shrink-0">
+                      <h3 className="space-font font-bold text-indigo-300 uppercase tracking-widest text-sm">
+                        <i className="fa-solid fa-code-merge mr-2"></i> Git Publish Center
+                      </h3>
+                      <button onClick={() => setShowAdminSettings(false)} className="text-slate-400 hover:text-white">
+                        <i className="fa-solid fa-times"></i>
+                      </button>
+                    </div>
+                    
+                    <div className="p-6 overflow-y-auto flex-grow space-y-4">
+                      {adminBranches.length === 0 ? (
+                        <div className="text-center text-slate-500 py-10 text-xs uppercase tracking-widest font-bold">No improvements pending.</div>
+                      ) : (
+                        adminBranches.map((branch, idx) => (
+                          <div key={idx} className="bg-slate-950 border border-slate-800 rounded-lg p-4 flex justify-between items-center">
+                            <div className="space-y-1">
+                              <span className="text-xs text-indigo-400 font-mono font-bold bg-indigo-900/30 px-2 py-0.5 rounded">
+                                <i className="fa-solid fa-code-branch mr-1"></i> {branch.branch_name}
+                              </span>
+                              <p className="text-sm text-slate-200 mt-1">"{branch.prompt}"</p>
+                              <div className="flex space-x-3 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                                <span>By: {branch.username}</span>
+                                <span>Status: <span className={branch.status === 'published' ? 'text-emerald-400' : 'text-yellow-500'}>{branch.status}</span></span>
+                              </div>
+                            </div>
+                            
+                            {branch.status !== 'published' && (
+                              <button 
+                                onClick={() => publishBranch(branch.branch_name)}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                                Publish
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+            </>
+          )}
         </div>
       );
     }
@@ -2641,31 +3078,85 @@
         const motorBase = createHoloBase(-6, 0, 3.0, 0xf59e0b);
         const genBase = createHoloBase(6, 0, 3.0, 0x0ea5e9);
 
+        // Helper to create a premium motor structure
+        const createPremiumMachine = (group, frameColor, coilColor) => {
+          // Stator Frame (Hollow Tube)
+          const statorOuter = new THREE.CylinderGeometry(1.2, 1.2, 2.2, 32, 1, true);
+          const statorInner = new THREE.CylinderGeometry(0.8, 0.8, 2.2, 32, 1, true);
+          const statorMat = new THREE.MeshStandardMaterial({ color: frameColor, metalness: 0.9, roughness: 0.2, side: THREE.DoubleSide });
+          
+          const statorO = new THREE.Mesh(statorOuter, statorMat);
+          const statorI = new THREE.Mesh(statorInner, statorMat);
+          statorO.rotation.x = Math.PI / 2;
+          statorI.rotation.x = Math.PI / 2;
+          statorO.position.y = 1.0;
+          statorI.position.y = 1.0;
+          
+          // Windings (Torus geometries inside stator)
+          const windings = new THREE.Group();
+          for(let i=0; i<3; i++) {
+            const coil = new THREE.Mesh(
+              new THREE.TorusGeometry(0.9, 0.1, 16, 32),
+              new THREE.MeshStandardMaterial({ color: coilColor, metalness: 0.7, roughness: 0.5 })
+            );
+            coil.rotation.y = (Math.PI / 3) * i;
+            windings.add(coil);
+          }
+          windings.rotation.x = Math.PI / 2;
+          windings.position.y = 1.0;
+
+          // Rotor (Solid Cylinder)
+          const rotorGeom = new THREE.CylinderGeometry(0.75, 0.75, 2.3, 32);
+          const rotorMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8, roughness: 0.3 });
+          const rotor = new THREE.Mesh(rotorGeom, rotorMat);
+          rotor.rotation.x = Math.PI / 2;
+          rotor.position.y = 1.0;
+
+          // Shaft
+          const shaftGeom = new THREE.CylinderGeometry(0.16, 0.16, 3.2, 16);
+          const shaftMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95 });
+          const shaft = new THREE.Mesh(shaftGeom, shaftMat);
+          shaft.rotation.x = Math.PI / 2;
+          shaft.position.y = 1.0;
+
+          // Flux Particles (Glowing Rings)
+          const fluxGroup = new THREE.Group();
+          for(let i=0; i<3; i++) {
+            const ring = new THREE.Mesh(
+              new THREE.TorusGeometry(0.85, 0.02, 8, 64),
+              new THREE.MeshBasicMaterial({ color: (i===0?0xff3333:(i===1?0x33ff33:0x3333ff)), transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending })
+            );
+            ring.position.z = -0.5 + (i * 0.5);
+            fluxGroup.add(ring);
+          }
+          fluxGroup.rotation.x = Math.PI / 2;
+          fluxGroup.position.y = 1.0;
+
+          // Hitbox for raycaster (invisible cylinder covering the whole motor)
+          const hitboxGeom = new THREE.CylinderGeometry(1.3, 1.3, 2.5, 16);
+          const hitboxMat = new THREE.MeshBasicMaterial({ visible: false });
+          const hitbox = new THREE.Mesh(hitboxGeom, hitboxMat);
+          hitbox.rotation.x = Math.PI / 2;
+          hitbox.position.y = 1.0;
+
+          group.add(statorO, statorI, windings, rotor, shaft, fluxGroup, hitbox);
+
+          return { rotor, shaft, fluxGroup, hitbox };
+        };
+
         // Induction Motor Model (Left)
         const motorGroup = new THREE.Group();
         motorGroup.position.set(-6, 0, 0);
         scene.add(motorGroup);
-        const motorFrame = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 2.0, 32), new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.95 }));
-        motorFrame.rotation.x = Math.PI / 2;
-        motorFrame.position.y = 1.0;
-        motorGroup.add(motorFrame);
-        const motorShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 2.8, 16), new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95 }));
-        motorShaft.rotation.x = Math.PI / 2;
-        motorShaft.position.y = 1.0;
-        motorGroup.add(motorShaft);
+        const motorParts = createPremiumMachine(motorGroup, 0x1e3a8a, 0xb45309); // Blue frame, Copper coils
+        const motorHitbox = motorParts.hitbox;
 
         // Alternator Model (Right)
         const genGroup = new THREE.Group();
         genGroup.position.set(6, 0, 0);
         scene.add(genGroup);
-        const genFrame = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 2.0, 32), new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9 }));
-        genFrame.rotation.x = Math.PI / 2;
-        genFrame.position.y = 1.0;
-        genGroup.add(genFrame);
-        const genShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 2.8, 16), new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95 }));
-        genShaft.rotation.x = Math.PI / 2;
-        genShaft.position.y = 1.0;
-        genGroup.add(genShaft);
+        const genParts = createPremiumMachine(genGroup, 0x78350f, 0xc2410c); // Bronze frame, Orange coils
+        const genHitbox = genParts.hitbox;
 
         // Create canvas floating names with makes
         const createFloatingLabelCanvas = (title, subtitle) => {
@@ -2732,8 +3223,14 @@
           animeId = requestAnimationFrame(animate);
           const time = clock.getElapsedTime();
           
-          motorShaft.rotation.y = time * (motorSpeedRef.current / 100);
-          genShaft.rotation.y = time * (altSpeedRef.current / 100);
+          motorParts.shaft.rotation.y = time * (motorSpeedRef.current / 100);
+          motorParts.rotor.rotation.y = time * (motorSpeedRef.current / 100);
+          genParts.shaft.rotation.y = time * (altSpeedRef.current / 100);
+          genParts.rotor.rotation.y = time * (altSpeedRef.current / 100);
+
+          // Animate Flux
+          motorParts.fluxGroup.rotation.z = time * 3;
+          genParts.fluxGroup.rotation.z = time * 3;
 
           const currentBay = selectedBayRef.current;
           if (currentBay === "motor") {
@@ -2749,15 +3246,15 @@
           }
           
           raycaster.setFromCamera(mouse, camera);
-          const intersects = raycaster.intersectObjects([motorFrame, genFrame]);
+          const intersects = raycaster.intersectObjects([motorHitbox, genHitbox]);
 
           if (intersects.length > 0) {
             const hit = intersects[0].object;
-            if (hit === motorFrame) {
-              setHoveredLabel("⚡ DOUBLE CLICK TO ZOOM MOTOR DECK");
+            if (hit === motorHitbox) {
+              setHoveredLabel(isZoomedRef.current ? "⚡ DOUBLE CLICK TO ZOOM OUT" : "⚡ DOUBLE CLICK TO ZOOM MOTOR DECK");
               document.body.style.cursor = 'pointer';
-            } else if (hit === genFrame) {
-              setHoveredLabel("⚡ DOUBLE CLICK TO ZOOM ALTERNATOR");
+            } else if (hit === genHitbox) {
+              setHoveredLabel(isZoomedRef.current ? "⚡ DOUBLE CLICK TO ZOOM OUT" : "⚡ DOUBLE CLICK TO ZOOM ALTERNATOR");
               document.body.style.cursor = 'pointer';
             }
           } else {
@@ -2774,39 +3271,59 @@
         animate();
 
         // Dual Click Zoom transition
+        const isZoomedRef = { current: false };
         const onDblClick = () => {
           raycaster.setFromCamera(mouse, camera);
-          const intersects = raycaster.intersectObjects([motorFrame, genFrame]);
+          const intersects = raycaster.intersectObjects([motorHitbox, genHitbox]);
+          
           if (intersects.length > 0) {
-            const hit = intersects[0].object;
-            let targetPos = new THREE.Vector3();
-            let facilityId = "motor";
-            if (hit === motorFrame) {
-              targetPos.set(-6, 2.0, 3.2);
-              facilityId = "motor";
-            } else if (hit === genFrame) {
-              targetPos.set(6, 2.0, 3.2);
-              facilityId = "alternator";
+            if (isZoomedRef.current) {
+              // Zoom out
+              isZoomedRef.current = false;
+              setSelectedBay(null);
+              gsap.to(camera.position, {
+                x: 0, y: 8, z: 15, duration: 1.0, ease: 'power3.out', onUpdate: () => controls.update()
+              });
+              gsap.to(controls.target, {
+                x: 0, y: 0, z: 0, duration: 1.0, ease: 'power3.out'
+              });
+            } else {
+              // Zoom in
+              isZoomedRef.current = true;
+              const hit = intersects[0].object;
+              let targetPos = new THREE.Vector3();
+              let targetLookAt = new THREE.Vector3();
+              let facilityId = "motor";
+              
+              if (hit === motorHitbox) {
+                targetPos.set(-6, 2.0, 4.0);
+                targetLookAt.set(-6, 1.0, 0);
+                facilityId = "motor";
+              } else if (hit === genHitbox) {
+                targetPos.set(6, 2.0, 4.0);
+                targetLookAt.set(6, 1.0, 0);
+                facilityId = "alternator";
+              }
+
+              setSelectedBay(facilityId);
+
+              gsap.to(camera.position, {
+                x: targetPos.x,
+                y: targetPos.y,
+                z: targetPos.z,
+                duration: 1.0,
+                ease: 'power3.out',
+                onUpdate: () => controls.update()
+              });
+
+              gsap.to(controls.target, {
+                x: targetLookAt.x,
+                y: targetLookAt.y,
+                z: targetLookAt.z,
+                duration: 1.0,
+                ease: 'power3.out'
+              });
             }
-
-            setSelectedBay(facilityId);
-
-            gsap.to(camera.position, {
-              x: targetPos.x,
-              y: targetPos.y,
-              z: targetPos.z,
-              duration: 1.0,
-              ease: 'power3.out',
-              onUpdate: () => controls.update()
-            });
-
-            gsap.to(controls.target, {
-              x: targetPos.x,
-              y: 1.0,
-              z: 0.0,
-              duration: 1.0,
-              ease: 'power3.out'
-            });
           }
         };
         window.addEventListener('dblclick', onDblClick);
@@ -2815,7 +3332,25 @@
           cancelAnimationFrame(animeId);
           window.removeEventListener('mousemove', onMouseMove);
           window.removeEventListener('dblclick', onDblClick);
-          if (container) container.innerHTML = "";
+          
+          // Proper WebGL Dispose to fix blank screen glitch
+          renderer.dispose();
+          scene.traverse((object) => {
+            if (object.isMesh) {
+              if (object.geometry) object.geometry.dispose();
+              if (object.material) {
+                if (Array.isArray(object.material)) {
+                  object.material.forEach(m => m.dispose());
+                } else {
+                  object.material.dispose();
+                }
+              }
+            }
+          });
+          
+          if (container && renderer.domElement) {
+            container.removeChild(renderer.domElement);
+          }
         };
       }, []); // Empty dependency array ensures it builds the scene only once on mount
 
