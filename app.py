@@ -31,9 +31,8 @@ try:
     if users_collection.count_documents({"username": "student"}) == 0:
         users_collection.insert_one({"username": "student", "password": "password", "role": "student"})
         
-except Exception as e:
-    print("MongoDB Init Error:", e)
-    mongo_client = None
+except ImportError:
+    MongoClient = None
     observations_collection = None
     users_collection = None
     improvements_collection = None
@@ -499,17 +498,6 @@ def login():
     else:
         return jsonify({"error": "Invalid credentials"}), 401
 
-@app.route("/api/test_db", methods=["GET"])
-def test_db():
-    try:
-        if mongo_client:
-            mongo_client.admin.command('ping')
-            return jsonify({"status": "success", "message": "online"}), 200
-        else:
-            return jsonify({"error": "mongo_client not initialized"}), 500
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 @app.route("/api/ai/improve", methods=["POST"])
 def ai_improve():
     data = request.json
@@ -528,21 +516,48 @@ def ai_improve():
             api_key=api_key
         )
         
-        system_prompt = "You are an expert AI software engineer. The user has requested a change or improvement to their application code. Generate the new code or instructions for the update. Wrap any code in markdown."
+        system_prompt = """You are an expert AI software engineer modifying a React/Three.js web app.
+The user wants: {prompt}
+
+You must return ONLY a raw JSON object with this exact structure:
+{
+  "css": "/* CSS overrides to achieve the user's goal */",
+  "js": "/* Any global JS to run, or leave empty */"
+}
+Do NOT include markdown formatting, backticks, or any other text. Just the raw JSON object."""
         
         response = client.chat.completions.create(
             model="nvidia/nemotron-4-340b-instruct",
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": system_prompt.replace("{prompt}", prompt)}
             ],
-            temperature=0.2,
+            temperature=0.1,
             max_tokens=1024,
         )
-        llm_generated_code = f"<!-- Nemotron-4-340B generated improvement for: {prompt} -->\n<!--\n{response.choices[0].message.content}\n-->\n"
+        
+        response_text = response.choices[0].message.content.strip()
+        
+        # Remove any markdown backticks if the LLM disobeys
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+            
+        import json
+        try:
+            ai_data = json.loads(response_text.strip())
+            css_code = ai_data.get("css", "")
+            js_code = ai_data.get("js", "")
+            llm_generated_code = f"\n<!-- AI Auto-Coder Injection -->\n<style>{css_code}</style>\n<script>{js_code}</script>\n<!-- End AI Auto-Coder Injection -->\n"
+        except json.JSONDecodeError:
+            print("Failed to parse Nemotron JSON:", response_text)
+            llm_generated_code = f"<!-- Nemotron Parse Error, returned: {response_text} -->\n"
+            
     except Exception as e:
         print("Nemotron LLM failed:", e)
-        llm_generated_code = f"<!-- Nemotron Simulation (Error/No Key): {prompt} -->\n"
+        llm_generated_code = f"<!-- Nemotron Simulation (Error/No Key): {str(e)} -->\n"
     
     # 2. Record improvement intent to database
     if improvements_collection is not None:
@@ -572,11 +587,17 @@ def ai_improve():
             # Try to get index.html to update it
             try:
                 file_contents = repo.get_contents("index.html", ref=branch_name)
-                # For safety in this demo, we just append a comment at the top rather than destroying the file
-                new_content = llm_generated_code + file_contents.decoded_content.decode("utf-8")
+                original_html = file_contents.decoded_content.decode("utf-8")
+                
+                # Safely inject CSS/JS into the head or body
+                if "</head>" in original_html:
+                    new_content = original_html.replace("</head>", llm_generated_code + "\n</head>")
+                else:
+                    new_content = original_html + llm_generated_code
+                    
                 repo.update_file(
                     file_contents.path,
-                    f"AI Improvement: {prompt}",
+                    f"AI Auto-Coder: {prompt}",
                     new_content,
                     file_contents.sha,
                     branch=branch_name
